@@ -1,0 +1,8 @@
+.vs/
+obj/
+**/bin/
+*.csproj.lscache
+*.Development.json
+*.env
+Migrations/
+appsettings.Development.json
