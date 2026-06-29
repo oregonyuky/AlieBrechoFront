@@ -328,7 +328,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return null;
     }
 
-    private static Product MapProduct(ProductDto dto)
+    private Product MapProduct(ProductDto dto)
     {
         return new Product
         {
@@ -339,7 +339,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             OldPrice = dto.OldPrice,
             DiscountPercent = dto.DiscountPercent,
             ProductAvailable = dto.ProductAvailable ?? true,
-            MainImageUrl = dto.MainImageUrl,
+            MainImageUrl = ResolveImageUrl(dto.MainImageUrl),
             AltText = dto.AltText,
             ShortDescription = dto.ShortDescription,
             LongDescription = dto.LongDescription,
@@ -350,6 +350,29 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
                 size.Sleeve,
                 size.Length)).ToList() ?? []
         };
+    }
+
+    private string? ResolveImageUrl(string? imageUrl)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var absoluteUri))
+        {
+            return absoluteUri.ToString();
+        }
+
+        var normalizedImageUrl = imageUrl.Replace('\\', '/').Trim();
+        var imageName = Path.GetFileName(normalizedImageUrl);
+        if (string.IsNullOrWhiteSpace(imageName) || string.IsNullOrWhiteSpace(Path.GetExtension(imageName)))
+        {
+            return new Uri(_options.BaseUrl, normalizedImageUrl.TrimStart('/')).ToString();
+        }
+
+        var escapedImageName = Uri.EscapeDataString(imageName);
+        return new Uri(_options.BaseUrl, $"api/FileImage/GetImage?imageName={escapedImageName}").ToString();
     }
 
     private static string GetFirstName(string fullName)
