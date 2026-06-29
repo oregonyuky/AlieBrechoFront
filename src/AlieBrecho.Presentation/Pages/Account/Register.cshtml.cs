@@ -87,13 +87,24 @@ public class RegisterModel(AppAuthenticationService authenticationService) : Pag
         var properties = new AuthenticationProperties
         {
             IsPersistent = Input.RememberMe,
-            ExpiresUtc = Input.RememberMe ? DateTimeOffset.UtcNow.AddDays(7) : null
+            ExpiresUtc = GetCookieExpirationUtc(session.AccessToken)
         };
 
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
             principal,
             properties);
+    }
+
+    private DateTimeOffset? GetCookieExpirationUtc(string accessToken)
+    {
+        var tokenExpirationUtc = JwtTokenReader.GetExpirationUtc(accessToken);
+        if (tokenExpirationUtc is not null)
+        {
+            return tokenExpirationUtc;
+        }
+
+        return Input.RememberMe ? DateTimeOffset.UtcNow.AddDays(7) : null;
     }
 
     private void SaveApiTokens(LoginSession session)

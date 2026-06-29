@@ -47,14 +47,18 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         {
             OnValidatePrincipal = async context =>
             {
-                var hasSessionToken = !string.IsNullOrWhiteSpace(
-                    context.HttpContext.Session.GetString(AuthSessionKeys.AccessToken));
-                var hasCookieToken = context.Principal?.FindFirst(AuthSessionKeys.AccessToken) is not null;
+                var sessionToken = context.HttpContext.Session.GetString(AuthSessionKeys.AccessToken);
+                var cookieToken = context.Principal?.FindFirst(AuthSessionKeys.AccessToken)?.Value;
+                var accessToken = !string.IsNullOrWhiteSpace(sessionToken)
+                    ? sessionToken
+                    : cookieToken;
 
                 if (context.Principal?.Identity?.IsAuthenticated == true &&
-                    !hasSessionToken &&
-                    !hasCookieToken)
+                    (string.IsNullOrWhiteSpace(accessToken) || JwtTokenReader.IsExpired(accessToken)))
                 {
+                    context.HttpContext.Session.Remove(AuthSessionKeys.AccessToken);
+                    context.HttpContext.Session.Remove(AuthSessionKeys.RefreshToken);
+                    context.HttpContext.Session.Remove(AuthSessionKeys.UserId);
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 }

@@ -67,3 +67,44 @@ function showToast(message) {
 document.getElementById("newsletterBtn")?.addEventListener("click", () => {
   showToast("Obrigada. Voce vai receber os proximos drops.");
 });
+
+document.querySelectorAll(".tab-btn[data-tab]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const tab = button.dataset.tab;
+    document.querySelectorAll(".tab-btn[data-tab]").forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+    document.querySelectorAll(".tab-panel").forEach((panel) => {
+      panel.classList.toggle("active", panel.id === `tab-${tab}`);
+    });
+  });
+});
+
+document.querySelectorAll(".share-btn[data-share]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const title = document.title;
+    const url = window.location.href;
+    const share = button.dataset.share;
+
+    if (share === "whatsapp") {
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`, "_blank", "noopener");
+      return;
+    }
+
+    if (share === "pinterest") {
+      window.open(`https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}`, "_blank", "noopener");
+      return;
+    }
+
+    showToast("Copie o link e compartilhe no Instagram.");
+  });
+});
+
+document.getElementById("copyBtn")?.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    showToast("Link do produto copiado.");
+  } catch {
+    showToast("Nao foi possivel copiar o link.");
+  }
+});

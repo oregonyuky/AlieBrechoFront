@@ -19,6 +19,7 @@
         </div>
         <div class="detail-copy">
             <a class="back-link" asp-page="/Index">Voltar aos produtos</a>
+            <div class="detail-brand">Alie Brecho</div>
             <h1>@Model.Product.Name</h1>
             <p>@(Model.Product.LongDescription ?? Model.Product.ShortDescription)</p>
             <div class="price-line">
@@ -26,6 +27,14 @@
                 @if (Model.Product.OldPrice is not null)
                 {
                     <span>@Model.Product.OldPrice.Value.ToString("C")</span>
+                }
+            </div>
+
+            <div class="detail-meta">
+                <span>@(Model.Product.ProductAvailable ? "Disponivel" : "Indisponivel")</span>
+                @if (!string.IsNullOrWhiteSpace(Model.Product.Id))
+                {
+                    <span>Codigo @Model.Product.Id</span>
                 }
             </div>
 
@@ -44,6 +53,142 @@
                 <input id="quantity" name="quantity" type="number" min="1" value="1" />
                 <button class="button" type="submit">Adicionar ao carrinho</button>
             </form>
+
+            <div class="share-row" aria-label="Compartilhar produto">
+                <button class="share-btn" type="button" data-share="whatsapp">WA</button>
+                <button class="share-btn" type="button" data-share="instagram">IG</button>
+                <button class="share-btn" type="button" data-share="pinterest">PI</button>
+                <button class="share-btn" type="button" id="copyBtn">Copiar</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="product-bottom">
+        <div class="product-bottom__inner">
+            <div>
+                <div class="tabs" role="tablist" aria-label="Informacoes do produto">
+                    <button class="tab-btn active" type="button" data-tab="descricao">Descricao</button>
+                    <button class="tab-btn" type="button" data-tab="composicao">Composicao</button>
+                    <button class="tab-btn" type="button" data-tab="trocas">Trocas</button>
+                </div>
+                <div class="tab-panel active" id="tab-descricao">
+                    <p>@(Model.Product.LongDescription ?? Model.Product.ShortDescription ?? "Peca unica de brecho selecionada pela curadoria Alie.")</p>
+                    <ul>
+                        <li>Peca unica selecionada individualmente</li>
+                        <li>Produto higienizado e revisado antes do envio</li>
+                        <li>Disponibilidade limitada a quantidade em estoque</li>
+                    </ul>
+                </div>
+                <div class="tab-panel" id="tab-composicao">
+                    <ul>
+                        <li>Composicao informada pela etiqueta original, quando disponivel</li>
+                        <li>Lavar a mao em agua fria</li>
+                        <li>Secar na sombra</li>
+                        <li>Nao usar alvejante</li>
+                    </ul>
+                </div>
+                <div class="tab-panel" id="tab-trocas">
+                    <p>Por se tratar de peca de brecho, realizamos trocas em ate 7 dias apos o recebimento, desde que a peca esteja nas mesmas condicoes em que foi enviada.</p>
+                    <ul>
+                        <li>Prazo de 7 dias corridos apos a entrega</li>
+                        <li>Peca sem uso e com etiqueta</li>
+                        <li>Credito na loja ou troca por outra peca disponivel</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div>
+                <div class="tabs">
+                    <button class="tab-btn active" type="button" disabled>Medidas da Peca</button>
+                </div>
+                <table class="medidas-table">
+                    <thead>
+                        <tr>
+                            <th>Medida</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Product.Sizes.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="2">Medidas nao informadas.</td>
+                            </tr>
+                        }
+                        @foreach (var size in Model.Product.Sizes)
+                        {
+                            @if (!string.IsNullOrWhiteSpace(size.Size))
+                            {
+                                <tr><td>Tamanho equivalente</td><td>@size.Size</td></tr>
+                            }
+                            @if (size.Bust is not null)
+                            {
+                                <tr><td>Busto</td><td>@size.Bust.Value.ToString("0.##") cm</td></tr>
+                            }
+                            @if (size.Sleeve is not null)
+                            {
+                                <tr><td>Comprimento manga</td><td>@size.Sleeve.Value.ToString("0.##") cm</td></tr>
+                            }
+                            @if (size.Length is not null)
+                            {
+                                <tr><td>Comprimento total</td><td>@size.Length.Value.ToString("0.##") cm</td></tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    @if (Model.RelatedProducts.Count > 0)
+    {
+        <section class="related reveal">
+            <div class="related__header">
+                <div>
+                    <span class="section__eyebrow">Voce tambem vai amar</span>
+                    <h2 class="section__title">Pecas <em>relacionadas</em></h2>
+                </div>
+                <a class="btn-text" asp-page="/Index">Ver tudo</a>
+            </div>
+            <div class="related__grid">
+                @foreach (var related in Model.RelatedProducts)
+                {
+                    <a class="rel-card" asp-page="/Products/Details" asp-route-id="@related.Id">
+                        <div class="rel-card__media">
+                            @if (!string.IsNullOrWhiteSpace(related.MainImageUrl))
+                            {
+                                <img src="@related.MainImageUrl" alt="@(related.AltText ?? related.Name)" />
+                            }
+                            else
+                            {
+                                <span>@related.Name</span>
+                            }
+                        </div>
+                        <div class="rel-card__info">
+                            <div class="rel-card__brand">Alie Brecho</div>
+                            <div class="rel-card__name">@related.Name</div>
+                            <div class="rel-card__price">@related.DisplayPrice.ToString("C")</div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+
+    <section class="reviews reveal">
+        <span class="section__eyebrow">O que dizem</span>
+        <h2 class="section__title">Avaliacoes <em>desta peca</em></h2>
+        <div class="reviews__top">
+            <div class="reviews__score">
+                <div class="reviews__score-num">5.0</div>
+                <div class="reviews__score-stars">*****</div>
+                <div class="reviews__score-count">4 avaliacoes</div>
+            </div>
+            <div class="reviews__bars">
+                <div class="bar-row"><span class="bar-label">5</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-count">4</span></div>
+                <div class="bar-row"><span class="bar-label">4</span><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span class="bar-count">0</span></div>
+                <div class="bar-row"><span class="bar-label">3</span><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span class="bar-count">0</span></div>
+            </div>
         </div>
     </section>
 }

@@ -9,11 +9,23 @@ namespace AlieBrecho.Presentation.Pages.Products;
 public class DetailsModel(CatalogService catalogService, CartService cartService) : PageModel
 {
     public Product? Product { get; private set; }
+    public IReadOnlyList<Product> RelatedProducts { get; private set; } = [];
 
     public async Task<IActionResult> OnGetAsync(string id, CancellationToken cancellationToken)
     {
         Product = await catalogService.GetProductAsync(id, cancellationToken);
-        return Product is null ? NotFound() : Page();
+        if (Product is null)
+        {
+            return NotFound();
+        }
+
+        var catalog = await catalogService.GetCatalogAsync(Product.CategoryId, cancellationToken);
+        RelatedProducts = catalog.Products
+            .Where(product => product.Id != Product.Id)
+            .Take(4)
+            .ToList();
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAddAsync(string id, int quantity, CancellationToken cancellationToken)
