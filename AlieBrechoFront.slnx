@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AlieBrecho.Application/AlieBrecho.Application.csproj" />
+    <Project Path="src/AlieBrecho.Domain/AlieBrecho.Domain.csproj" />
+    <Project Path="src/AlieBrecho.Infrastructure/AlieBrecho.Infrastructure.csproj" />
+    <Project Path="src/AlieBrecho.Presentation/AlieBrecho.Presentation.csproj" />
+  </Folder>
+</Solution>

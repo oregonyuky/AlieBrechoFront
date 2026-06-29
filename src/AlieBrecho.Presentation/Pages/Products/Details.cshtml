@@ -1,0 +1,49 @@
+@page "{id}"
+@model AlieBrecho.Presentation.Pages.Products.DetailsModel
+@{
+    ViewData["Title"] = Model.Product?.Name ?? "Produto";
+}
+
+@if (Model.Product is not null)
+{
+    <section class="product-detail">
+        <div class="detail-media">
+            @if (!string.IsNullOrWhiteSpace(Model.Product.MainImageUrl))
+            {
+                <img src="@Model.Product.MainImageUrl" alt="@(Model.Product.AltText ?? Model.Product.Name)" />
+            }
+            else
+            {
+                <span>@Model.Product.Name</span>
+            }
+        </div>
+        <div class="detail-copy">
+            <a class="back-link" asp-page="/Index">Voltar aos produtos</a>
+            <h1>@Model.Product.Name</h1>
+            <p>@(Model.Product.LongDescription ?? Model.Product.ShortDescription)</p>
+            <div class="price-line">
+                <strong>@Model.Product.DisplayPrice.ToString("C")</strong>
+                @if (Model.Product.OldPrice is not null)
+                {
+                    <span>@Model.Product.OldPrice.Value.ToString("C")</span>
+                }
+            </div>
+
+            @if (Model.Product.Sizes.Count > 0)
+            {
+                <div class="sizes">
+                    @foreach (var size in Model.Product.Sizes)
+                    {
+                        <span>@size.Size</span>
+                    }
+                </div>
+            }
+
+            <form method="post" asp-page-handler="Add" asp-route-id="@Model.Product.Id" class="buy-box">
+                <label for="quantity">Quantidade</label>
+                <input id="quantity" name="quantity" type="number" min="1" value="1" />
+                <button class="button" type="submit">Adicionar ao carrinho</button>
+            </form>
+        </div>
+    </section>
+}

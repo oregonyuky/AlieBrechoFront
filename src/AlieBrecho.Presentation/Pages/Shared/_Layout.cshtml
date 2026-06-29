@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Alie Brecho</title>
+    <script type="importmap"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="toast" id="toast"></div>
+
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+    <aside class="mobile-menu" id="mobileMenu" aria-label="Menu mobile">
+        <button class="mobile-menu__close" id="mobileClose" type="button" aria-label="Fechar menu">x</button>
+        <div class="mobile-menu__logo">Alie <em>Brecho</em></div>
+        <ul class="mobile-menu__links">
+            <li><a asp-page="/Index" asp-fragment="categorias">Categorias</a></li>
+            <li><a asp-page="/Index" asp-fragment="pecas">Pecas</a></li>
+            <li><a asp-page="/Index" asp-fragment="sobre">Nossa historia</a></li>
+            <li><a asp-page="/Cart/Index">Carrinho</a></li>
+        </ul>
+        <div class="mobile-menu__footer">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form method="post" asp-page="/Account/Logout">
+                    <button class="mobile-menu__enter" type="submit">Sair</button>
+                </form>
+            }
+            else
+            {
+                <a class="mobile-menu__enter" asp-page="/Account/Login">Entrar na conta</a>
+            }
+        </div>
+    </aside>
+
+    <div class="ribbon ribbon-top" id="topRibbon">
+        <div class="ribbon__track">
+            <span class="ribbon__item">Frete gratis acima de R$ 150</span>
+            <span class="ribbon__item">Pecas unicas e selecionadas</span>
+            <span class="ribbon__item">Moda circular com proposito</span>
+            <span class="ribbon__item">Troca em 7 dias</span>
+            <span class="ribbon__item">Curadoria feminina</span>
+            <span class="ribbon__item">Frete gratis acima de R$ 150</span>
+            <span class="ribbon__item">Pecas unicas e selecionadas</span>
+            <span class="ribbon__item">Moda circular com proposito</span>
+        </div>
+    </div>
+
+    <header>
+        <nav id="navbar" aria-label="Principal">
+            <a class="nav__logo" asp-page="/Index">Alie <em>Brecho</em></a>
+            <ul class="nav__links">
+                <li><a asp-page="/Index" asp-fragment="categorias">Categorias</a></li>
+                <li><a asp-page="/Index" asp-fragment="pecas">Pecas</a></li>
+                <li><a asp-page="/Index" asp-fragment="sobre">Nossa historia</a></li>
+                <li><a asp-page="/Cart/Index">Carrinho</a></li>
+            </ul>
+            <div class="nav__actions">
+                <a class="nav__icon" asp-page="/Cart/Index" aria-label="Carrinho">Sacola</a>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <span class="nav__user">@User.Identity.Name</span>
+                    <form method="post" asp-page="/Account/Logout" class="logout-form">
+                        <button class="btn-nav-outline" type="submit">Sair</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn-nav-outline" asp-page="/Account/Login">Entrar</a>
+                    <a class="btn-nav-outline btn-nav-filled" asp-page="/Account/Register">Cadastrar</a>
+                }
+                <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer" id="contato">
+        <div class="footer__top">
+            <div>
+                <span class="footer__logo">Alie <em>Brecho</em></span>
+                <p class="footer__desc">Moda circular com curadoria, afeto e proposito. Feita para pecas que merecem uma nova historia.</p>
+                <div class="footer__socials">
+                    <a class="social" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">IG</a>
+                    <a class="social" href="#">WA</a>
+                    <a class="social" href="#">PI</a>
+                </div>
+            </div>
+            <div>
+                <p class="footer__col-title">Loja</p>
+                <ul class="footer__list">
+                    <li><a asp-page="/Index">Produtos</a></li>
+                    <li><a asp-page="/Cart/Index">Carrinho</a></li>
+                    <li><a asp-page="/Checkout/Index">Checkout</a></li>
+                </ul>
+            </div>
+            <div>
+                <p class="footer__col-title">Atendimento</p>
+                <ul class="footer__list">
+                    <li><a href="#">Segunda a sexta</a></li>
+                    <li><a href="#">contato@aliebrecho.com.br</a></li>
+                    <li><a href="#">Trocas e devolucoes</a></li>
+                </ul>
+            </div>
+            <div>
+                <p class="footer__col-title">Institucional</p>
+                <ul class="footer__list">
+                    <li><a asp-page="/Index" asp-fragment="sobre">Sobre a Alie</a></li>
+                    <li><a href="#">Nossa curadoria</a></li>
+                    <li><a href="#">FAQ</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer__bottom">
+            <p class="footer__copy">2026 Alie Brecho. Moda circular selecionada com carinho.</p>
+            <div class="footer__pays">
+                <span class="pay">PIX</span>
+                <span class="pay">VISA</span>
+                <span class="pay">MASTER</span>
+                <span class="pay">BOLETO</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

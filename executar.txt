@@ -1,0 +1,11 @@
+--back
+
+cd C:\Users\felip\source\repos\AlieBrecho
+dotnet run --project Presentation\ASPNET\ASPNET.csproj
+
+-- front
+
+cd C:\Users\felip\source\repos\AlieBrechoFront
+dotnet run --project src\AlieBrecho.Presentation\AlieBrecho.Presentation.csproj
+
+

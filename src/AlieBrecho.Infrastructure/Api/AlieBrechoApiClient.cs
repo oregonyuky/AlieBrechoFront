@@ -1,0 +1,497 @@
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using AlieBrecho.Application.Abstractions;
+using AlieBrecho.Domain.Auth;
+using AlieBrecho.Domain.Orders;
+using AlieBrecho.Domain.Products;
+using Microsoft.Extensions.Options;
+
+namespace AlieBrecho.Infrastructure.Api;
+
+internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
+    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway
+{
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    private readonly AlieBrechoApiOptions _options = options.Value;
+
+    public async Task<LoginSession?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
+    {
+        var payload = new LoginPayload
+        {
+            Email = request.Email,
+            Password = request.Password
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.LoginPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var login = await ReadWrappedAsync<LoginDto>(response, cancellationToken);
+        if (string.IsNullOrWhiteSpace(login.Data?.AccessToken))
+        {
+            return null;
+        }
+
+        return new LoginSession
+        {
+            AccessToken = login.Data.AccessToken,
+            RefreshToken = login.Data.RefreshToken,
+            UserId = login.Data.UserId,
+            Email = login.Data.Email ?? request.Email,
+            FirstName = login.Data.FirstName,
+            LastName = login.Data.LastName,
+            Roles = login.Data.Roles ?? []
+        };
+    }
+
+    public async Task<RegisterResult?> RegisterAsync(
+        RegisterRequest request,
+        CancellationToken cancellationToken)
+    {
+        var payload = new RegisterPayload
+        {
+            Email = request.Email,
+            Password = request.Password,
+            ConfirmPassword = request.ConfirmPassword,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            CompanyName = request.CompanyName
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.RegisterPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var register = await ReadWrappedAsync<RegisterDto>(response, cancellationToken);
+        if (string.IsNullOrWhiteSpace(register.Data?.Email))
+        {
+            return null;
+        }
+
+        return new RegisterResult
+        {
+            UserId = register.Data.UserId,
+            Email = register.Data.Email,
+            FirstName = register.Data.FirstName,
+            LastName = register.Data.LastName,
+            CompanyName = register.Data.CompanyName
+        };
+    }
+
+    public async Task<IReadOnlyList<Product>> GetProductsAsync(CancellationToken cancellationToken)
+    {
+        var response = await GetWrappedAsync<List<ProductDto>>(_options.ProductsPath, cancellationToken);
+        return response.Select(MapProduct).ToList();
+    }
+
+    public async Task<Product?> GetProductAsync(string productId, CancellationToken cancellationToken)
+    {
+        var detailPath = _options.ProductDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(productId));
+
+        try
+        {
+            var product = await GetWrappedAsync<ProductDto>(detailPath, cancellationToken);
+            return product is null ? null : MapProduct(product);
+        }
+        catch (HttpRequestException)
+        {
+            var products = await GetProductsAsync(cancellationToken);
+            return products.FirstOrDefault(product => product.Id == productId);
+        }
+    }
+
+    public async Task<IReadOnlyList<Category>> GetCategoriesAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await GetWrappedAsync<List<CategoryDto>>(_options.CategoriesPath, cancellationToken);
+            return response.Select(category => new Category(
+                category.Id,
+                category.Name ?? string.Empty,
+                category.Description,
+                category.IsActive)).ToList();
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
+
+    public async Task<string?> CreateOrderAsync(
+        CheckoutRequest request,
+        Cart cart,
+        CancellationToken cancellationToken)
+    {
+        var customer = await CreateCustomerAsync(request, cancellationToken);
+        var payload = new CreateOrderPayload
+        {
+            CustomerId = customer.Id,
+            Status = "Pending",
+            Notes = request.Notes,
+            ShippingDetail = new ShippingDetailPayload
+            {
+                FirstName = GetFirstName(request.CustomerName),
+                LastName = GetLastName(request.CustomerName),
+                Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+                Street = request.Street,
+                Number = request.Number,
+                Complement = request.Complement,
+                Neighborhood = request.Neighborhood,
+                City = request.City,
+                State = request.State,
+                PostCode = request.PostCode
+            },
+            OrderDetails = cart.Items.Select(item => new OrderDetailPayload
+            {
+                ProductId = item.Product.Id,
+                Quantity = item.Quantity,
+                UnitPrice = item.Product.UnitPrice
+            }).ToList()
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.OrdersPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<OrderDto>(response, cancellationToken);
+        return result?.Data?.Id;
+    }
+
+    private async Task<CustomerDto> CreateCustomerAsync(
+        CheckoutRequest request,
+        CancellationToken cancellationToken)
+    {
+        var payload = new CreateCustomerPayload
+        {
+            Name = request.CustomerName,
+            PhoneNumber = request.PhoneNumber,
+            EmailAddress = request.Email,
+            Street = request.Street,
+            Number = request.Number,
+            Neighborhood = request.Neighborhood,
+            Complement = request.Complement,
+            City = request.City,
+            State = request.State,
+            PostalCode = request.PostCode,
+            Country = "Brasil",
+            CustomerStatus = "Active"
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.CreateCustomerPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var customer = await ReadWrappedAsync<CustomerDto>(response, cancellationToken);
+        return customer?.Data ?? throw new InvalidOperationException("A API nao retornou o cliente criado.");
+    }
+
+    private async Task<T> GetWrappedAsync<T>(string path, CancellationToken cancellationToken)
+        where T : class
+    {
+        using var response = await httpClient.GetAsync(path, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<T>(response, cancellationToken);
+        return result?.Data ?? throw new InvalidOperationException($"Resposta vazia da API em '{path}'.");
+    }
+
+    private static async Task<ApiResponse<T>> ReadWrappedAsync<T>(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        var apiSuccess = JsonSerializer.Deserialize<ApiSuccessResponse<ApiResponse<T>>>(content, JsonOptions);
+        if (apiSuccess?.Content?.Data is not null)
+        {
+            return apiSuccess.Content;
+        }
+
+        var legacySuccess = JsonSerializer.Deserialize<ApiSuccessResponse<T>>(content, JsonOptions);
+        if (legacySuccess?.Content is not null)
+        {
+            return new ApiResponse<T>(legacySuccess.Content);
+        }
+
+        var wrapped = JsonSerializer.Deserialize<ApiResponse<T>>(content, JsonOptions);
+        if (wrapped?.Data is not null)
+        {
+            return wrapped;
+        }
+
+        var direct = JsonSerializer.Deserialize<T>(content, JsonOptions);
+        return direct is null
+            ? new ApiResponse<T>(default)
+            : new ApiResponse<T>(direct);
+    }
+
+    private static async Task EnsureSuccessAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        var message = GetApiErrorMessage(content);
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            message = $"A API retornou erro {(int)response.StatusCode} ({response.ReasonPhrase}).";
+        }
+
+        throw new HttpRequestException(message, null, response.StatusCode);
+    }
+
+    private static string? GetApiErrorMessage(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(content);
+            return FindMessage(document.RootElement);
+        }
+        catch (JsonException)
+        {
+            return content.Length > 300 ? content[..300] : content;
+        }
+    }
+
+    private static string? FindMessage(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.String)
+        {
+            return element.GetString();
+        }
+
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in new[] { "message", "Message", "detail", "Detail", "title", "Title" })
+            {
+                if (element.TryGetProperty(propertyName, out var property) &&
+                    property.ValueKind == JsonValueKind.String)
+                {
+                    return property.GetString();
+                }
+            }
+
+            foreach (var propertyName in new[] { "error", "Error", "errors", "Errors", "content", "Content" })
+            {
+                if (element.TryGetProperty(propertyName, out var property))
+                {
+                    var nestedMessage = FindMessage(property);
+                    if (!string.IsNullOrWhiteSpace(nestedMessage))
+                    {
+                        return nestedMessage;
+                    }
+                }
+            }
+        }
+
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            var messages = element.EnumerateArray()
+                .Select(FindMessage)
+                .Where(message => !string.IsNullOrWhiteSpace(message));
+
+            return string.Join(" ", messages);
+        }
+
+        return null;
+    }
+
+    private static Product MapProduct(ProductDto dto)
+    {
+        return new Product
+        {
+            Id = dto.Id,
+            Name = dto.Name ?? string.Empty,
+            CategoryId = dto.CategoryId,
+            UnitPrice = dto.UnitPrice,
+            OldPrice = dto.OldPrice,
+            DiscountPercent = dto.DiscountPercent,
+            ProductAvailable = dto.ProductAvailable ?? true,
+            MainImageUrl = dto.MainImageUrl,
+            AltText = dto.AltText,
+            ShortDescription = dto.ShortDescription,
+            LongDescription = dto.LongDescription,
+            Sizes = dto.Sizes?.Select(size => new ProductSize(
+                size.Id,
+                size.Size,
+                size.Bust,
+                size.Sleeve,
+                size.Length)).ToList() ?? []
+        };
+    }
+
+    private static string GetFirstName(string fullName)
+    {
+        return fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? fullName;
+    }
+
+    private static string GetLastName(string fullName)
+    {
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length <= 1 ? string.Empty : string.Join(' ', parts.Skip(1));
+    }
+
+    private sealed record ApiResponse<T>(T? Data)
+        where T : class;
+
+    private sealed record ApiSuccessResponse<T>(T? Content)
+        where T : class;
+
+    private sealed record LoginPayload
+    {
+        public string? Email { get; init; }
+        public string? Password { get; init; }
+    }
+
+    private sealed record LoginDto
+    {
+        public string? AccessToken { get; init; }
+        public string? RefreshToken { get; init; }
+        public string? UserId { get; init; }
+        public string? Email { get; init; }
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public List<string>? Roles { get; init; }
+    }
+
+    private sealed record RegisterPayload
+    {
+        public string? Email { get; init; }
+        public string? Password { get; init; }
+        public string? ConfirmPassword { get; init; }
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? CompanyName { get; init; }
+    }
+
+    private sealed record RegisterDto
+    {
+        public string? UserId { get; init; }
+        public string? Email { get; init; }
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? CompanyName { get; init; }
+    }
+
+    private sealed record ProductDto
+    {
+        public string? Id { get; init; }
+        public string? Name { get; init; }
+        public string? CategoryId { get; init; }
+        public decimal? UnitPrice { get; init; }
+        public decimal? OldPrice { get; init; }
+        public decimal? DiscountPercent { get; init; }
+        public bool? ProductAvailable { get; init; }
+        public string? MainImageUrl { get; init; }
+        public string? AltText { get; init; }
+        public string? ShortDescription { get; init; }
+        public string? LongDescription { get; init; }
+        public List<ProductSizeDto>? Sizes { get; init; }
+    }
+
+    private sealed record ProductSizeDto
+    {
+        public string? Id { get; init; }
+        public string? Size { get; init; }
+        public decimal? Bust { get; init; }
+        public decimal? Sleeve { get; init; }
+        public decimal? Length { get; init; }
+    }
+
+    private sealed record CategoryDto
+    {
+        public string? Id { get; init; }
+        public string? Name { get; init; }
+        public string? Description { get; init; }
+        public bool IsActive { get; init; } = true;
+    }
+
+    private sealed record OrderDto
+    {
+        public string? Id { get; init; }
+    }
+
+    private sealed record CustomerDto
+    {
+        public string? Id { get; init; }
+    }
+
+    private sealed record CreateCustomerPayload
+    {
+        public string? Name { get; init; }
+        public string? PhoneNumber { get; init; }
+        public string? EmailAddress { get; init; }
+        public string? Street { get; init; }
+        public string? Number { get; init; }
+        public string? Neighborhood { get; init; }
+        public string? Complement { get; init; }
+        public string? City { get; init; }
+        public string? State { get; init; }
+        public string? PostalCode { get; init; }
+        public string? Country { get; init; }
+        public string? CustomerStatus { get; init; }
+    }
+
+    private sealed record CreateOrderPayload
+    {
+        public string? CustomerId { get; init; }
+        public string? Status { get; init; }
+        public string? Notes { get; init; }
+        public ShippingDetailPayload? ShippingDetail { get; init; }
+        public List<OrderDetailPayload> OrderDetails { get; init; } = [];
+    }
+
+    private sealed record ShippingDetailPayload
+    {
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? Email { get; init; }
+        public string? PhoneNumber { get; init; }
+        public string? Street { get; init; }
+        public string? Number { get; init; }
+        public string? Neighborhood { get; init; }
+        public string? Complement { get; init; }
+        public string? City { get; init; }
+        public string? State { get; init; }
+        public string? PostCode { get; init; }
+    }
+
+    private sealed record OrderDetailPayload
+    {
+        public string? ProductId { get; init; }
+        public int Quantity { get; init; }
+        public decimal? UnitPrice { get; init; }
+    }
+}

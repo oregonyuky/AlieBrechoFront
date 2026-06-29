@@ -1,0 +1,14 @@
+@page
+@model AlieBrecho.Presentation.Pages.Checkout.SuccessModel
+@{
+    ViewData["Title"] = "Pedido enviado";
+}
+
+<section class="empty-state success-state">
+    <h1>Pedido enviado</h1>
+    @if (!string.IsNullOrWhiteSpace(Model.OrderId))
+    {
+        <p>Numero do pedido: <strong>@Model.OrderId</strong></p>
+    }
+    <a class="button" asp-page="/Index">Continuar comprando</a>
+</section>

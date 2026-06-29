@@ -1,0 +1,46 @@
+@page
+@model AlieBrecho.Presentation.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<section class="auth-shell">
+    <div class="auth-panel">
+        <p class="eyebrow">Area de acesso</p>
+        <h1>Entrar</h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="notice">@Model.ErrorMessage</div>
+        }
+
+        <form method="post" class="auth-form">
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <label asp-for="Input.Email">
+                E-mail
+                <input asp-for="Input.Email" autocomplete="username" />
+                <span asp-validation-for="Input.Email"></span>
+            </label>
+
+            <label asp-for="Input.Password">
+                Senha
+                <input asp-for="Input.Password" type="password" autocomplete="current-password" />
+                <span asp-validation-for="Input.Password"></span>
+            </label>
+
+            <label class="check-label">
+                <input asp-for="Input.RememberMe" />
+                Manter conectado
+            </label>
+
+            <button class="button" type="submit">Entrar</button>
+        </form>
+
+        <p class="auth-switch">Ainda nao tem conta? <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">Criar cadastro</a></p>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

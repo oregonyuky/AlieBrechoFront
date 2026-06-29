@@ -1,0 +1,70 @@
+@page
+@model AlieBrecho.Presentation.Pages.Account.RegisterModel
+@{
+    ViewData["Title"] = "Cadastro";
+}
+
+<section class="auth-shell auth-shell-wide">
+    <div class="auth-panel">
+        <p class="eyebrow">Criar conta</p>
+        <h1>Cadastro</h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="notice">@Model.ErrorMessage</div>
+        }
+
+        <form method="post" class="auth-form auth-form-grid">
+            <input type="hidden" asp-for="ReturnUrl" />
+
+            <label asp-for="Input.FirstName">
+                Nome
+                <input asp-for="Input.FirstName" autocomplete="given-name" />
+                <span asp-validation-for="Input.FirstName"></span>
+            </label>
+
+            <label asp-for="Input.LastName">
+                Sobrenome
+                <input asp-for="Input.LastName" autocomplete="family-name" />
+                <span asp-validation-for="Input.LastName"></span>
+            </label>
+
+            <label class="full" asp-for="Input.CompanyName">
+                Empresa
+                <input asp-for="Input.CompanyName" autocomplete="organization" />
+                <span asp-validation-for="Input.CompanyName"></span>
+            </label>
+
+            <label class="full" asp-for="Input.Email">
+                E-mail
+                <input asp-for="Input.Email" autocomplete="username" />
+                <span asp-validation-for="Input.Email"></span>
+            </label>
+
+            <label asp-for="Input.Password">
+                Senha
+                <input asp-for="Input.Password" type="password" autocomplete="new-password" />
+                <span asp-validation-for="Input.Password"></span>
+            </label>
+
+            <label asp-for="Input.ConfirmPassword">
+                Confirmar senha
+                <input asp-for="Input.ConfirmPassword" type="password" autocomplete="new-password" />
+                <span asp-validation-for="Input.ConfirmPassword"></span>
+            </label>
+
+            <label class="check-label full">
+                <input asp-for="Input.RememberMe" />
+                Manter conectado
+            </label>
+
+            <button class="button full" type="submit">Criar conta</button>
+        </form>
+
+        <p class="auth-switch">Ja tem uma conta? <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl">Entrar</a></p>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

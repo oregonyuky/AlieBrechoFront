@@ -1,0 +1,41 @@
+@page
+@model AlieBrecho.Presentation.Pages.Cart.IndexModel
+@{
+    ViewData["Title"] = "Carrinho";
+}
+
+<section class="cart-shell">
+    <h1>Carrinho</h1>
+
+    @if (Model.Cart.IsEmpty)
+    {
+        <div class="empty-state">
+            <h2>Seu carrinho esta vazio</h2>
+            <a class="button" asp-page="/Index">Ver produtos</a>
+        </div>
+    }
+    else
+    {
+        <div class="cart-lines">
+            @foreach (var item in Model.Cart.Items)
+            {
+                <article class="cart-line">
+                    <div>
+                        <h2>@item.Product.Name</h2>
+                        <span>@item.Quantity x @item.Product.DisplayPrice.ToString("C")</span>
+                    </div>
+                    <strong>@item.Total.ToString("C")</strong>
+                    <form method="post" asp-page-handler="Remove" asp-route-productId="@item.Product.Id">
+                        <button class="icon-button" type="submit" aria-label="Remover">x</button>
+                    </form>
+                </article>
+            }
+        </div>
+
+        <aside class="cart-summary">
+            <span>Subtotal</span>
+            <strong>@Model.Cart.Subtotal.ToString("C")</strong>
+            <a class="button" asp-page="/Checkout/Index">Finalizar pedido</a>
+        </aside>
+    }
+</section>

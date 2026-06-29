@@ -1,0 +1,22 @@
+using AlieBrecho.Application.Catalog;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+
+namespace AlieBrecho.Presentation.Pages;
+
+public class IndexModel(CatalogService catalogService) : PageModel
+{
+    public CatalogView Catalog { get; private set; } = new([], [], null);
+    public string? ErrorMessage { get; private set; }
+
+    public async Task OnGetAsync(string? categoryId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            Catalog = await catalogService.GetCatalogAsync(categoryId, cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            ErrorMessage = "Nao foi possivel carregar os produtos da API. Verifique a URL em appsettings.json.";
+        }
+    }
+}

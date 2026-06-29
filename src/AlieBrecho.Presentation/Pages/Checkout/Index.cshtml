@@ -1,0 +1,29 @@
+@page
+@model AlieBrecho.Presentation.Pages.Checkout.IndexModel
+@{
+    ViewData["Title"] = "Checkout";
+}
+
+<section class="checkout-shell">
+    <h1>Finalizar pedido</h1>
+
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="notice">@Model.ErrorMessage</div>
+    }
+
+    <form method="post" class="checkout-form">
+        <label>Nome completo<input asp-for="Input.CustomerName" required /></label>
+        <label>E-mail<input asp-for="Input.Email" type="email" required /></label>
+        <label>Telefone<input asp-for="Input.PhoneNumber" required /></label>
+        <label>CEP<input asp-for="Input.PostCode" required /></label>
+        <label>Rua<input asp-for="Input.Street" required /></label>
+        <label>Numero<input asp-for="Input.Number" required /></label>
+        <label>Bairro<input asp-for="Input.Neighborhood" required /></label>
+        <label>Cidade<input asp-for="Input.City" required /></label>
+        <label>Estado<input asp-for="Input.State" maxlength="2" required /></label>
+        <label>Complemento<input asp-for="Input.Complement" /></label>
+        <label class="full">Observacoes<textarea asp-for="Input.Notes"></textarea></label>
+        <button class="button" type="submit">Enviar pedido</button>
+    </form>
+</section>
