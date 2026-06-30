@@ -28,9 +28,9 @@ public class DetailsModel(CatalogService catalogService, CartService cartService
         return Page();
     }
 
-    public async Task<IActionResult> OnPostAddAsync(string id, int quantity, CancellationToken cancellationToken)
+    public async Task<IActionResult> OnPostAddAsync(string id, CancellationToken cancellationToken)
     {
-        await cartService.AddAsync(id, quantity, cancellationToken);
+        await cartService.AddAsync(id, cancellationToken);
         return RedirectToPage("/Cart/Index");
     }
 }

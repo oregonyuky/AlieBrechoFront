@@ -49,8 +49,6 @@
             }
 
             <form method="post" asp-page-handler="Add" asp-route-id="@Model.Product.Id" class="buy-box">
-                <label for="quantity">Quantidade</label>
-                <input id="quantity" name="quantity" type="number" min="1" value="1" />
                 <button class="button" type="submit">Adicionar ao carrinho</button>
             </form>
 
@@ -101,41 +99,35 @@
                 <div class="tabs">
                     <button class="tab-btn active" type="button" disabled>Medidas da Peca</button>
                 </div>
-                <table class="medidas-table">
-                    <thead>
-                        <tr>
-                            <th>Medida</th>
-                            <th>Valor</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if (Model.Product.Sizes.Count == 0)
-                        {
+                <div class="medidas-table-wrap">
+                    <table class="medidas-table">
+                        <thead>
                             <tr>
-                                <td colspan="2">Medidas nao informadas.</td>
+                                <th>Tamanho equivalente</th>
+                                <th>Busto</th>
+                                <th>Comprimento Manga</th>
+                                <th>Comprimento total</th>
                             </tr>
-                        }
-                        @foreach (var size in Model.Product.Sizes)
-                        {
-                            @if (!string.IsNullOrWhiteSpace(size.Size))
+                        </thead>
+                        <tbody>
+                            @if (Model.Product.Sizes.Count == 0)
                             {
-                                <tr><td>Tamanho equivalente</td><td>@size.Size</td></tr>
+                                <tr>
+                                    <td colspan="4">Medidas nao informadas.</td>
+                                </tr>
                             }
-                            @if (size.Bust is not null)
+                            @foreach (var size in Model.Product.Sizes)
                             {
-                                <tr><td>Busto</td><td>@size.Bust.Value.ToString("0.##") cm</td></tr>
+                                <tr>
+                                    <td>@(string.IsNullOrWhiteSpace(size.Size) ? "-" : size.Size)</td>
+                                    <td>@(size.Bust is null ? "-" : $"{size.Bust.Value:0.##} cm")</td>
+                                    <td>@(size.Sleeve is null ? "-" : $"{size.Sleeve.Value:0.##} cm")</td>
+                                    <td>@(size.Length is null ? "-" : $"{size.Length.Value:0.##} cm")</td>
+                                </tr>
                             }
-                            @if (size.Sleeve is not null)
-                            {
-                                <tr><td>Comprimento manga</td><td>@size.Sleeve.Value.ToString("0.##") cm</td></tr>
-                            }
-                            @if (size.Length is not null)
-                            {
-                                <tr><td>Comprimento total</td><td>@size.Length.Value.ToString("0.##") cm</td></tr>
-                            }
-                        }
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </section>

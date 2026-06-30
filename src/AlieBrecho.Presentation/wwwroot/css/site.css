@@ -1352,7 +1352,7 @@ button.button {
 }
 
 .tab-panel,
-.medidas-table {
+.medidas-table-wrap {
   background: #fff;
   border: 1px solid rgba(196, 120, 106, 0.12);
   border-radius: 22px;
@@ -1381,11 +1381,17 @@ button.button {
   padding-left: 18px;
 }
 
+.medidas-table-wrap {
+  overflow: hidden;
+  overflow-x: auto;
+}
+
 .medidas-table {
   border-collapse: separate;
   border-spacing: 0;
   color: var(--warm-gray);
-  overflow: hidden;
+  min-width: 560px;
+  table-layout: fixed;
   width: 100%;
 }
 
@@ -1400,7 +1406,12 @@ button.button {
   color: var(--dark);
   font-size: 12px;
   letter-spacing: 0.8px;
+  line-height: 1.3;
   text-transform: uppercase;
+}
+
+.medidas-table td {
+  white-space: nowrap;
 }
 
 .medidas-table tr:last-child td {

@@ -17,12 +17,10 @@ public sealed class CartService(ICartStore cartStore, IProductCatalogGateway pro
         return new AlieBrecho.Domain.Orders.Cart(cartItems);
     }
 
-    public async Task AddAsync(string productId, int quantity, CancellationToken cancellationToken)
+    public async Task AddAsync(string productId, CancellationToken cancellationToken)
     {
         var items = new Dictionary<string, int>(await cartStore.GetItemsAsync(cancellationToken));
-        items[productId] = items.TryGetValue(productId, out var currentQuantity)
-            ? currentQuantity + Math.Max(1, quantity)
-            : Math.Max(1, quantity);
+        items[productId] = 1;
 
         await cartStore.SaveItemsAsync(items, cancellationToken);
     }
