@@ -11,7 +11,7 @@ public sealed class CartService(ICartStore cartStore, IProductCatalogGateway pro
         var products = await productCatalogGateway.GetProductsAsync(cancellationToken);
         var cartItems = products
             .Where(product => product.Id is not null && items.ContainsKey(product.Id))
-            .Select(product => new CartItem(product, Math.Max(1, items[product.Id!])))
+            .Select(product => new CartItem(product, 1))
             .ToList();
 
         return new AlieBrecho.Domain.Orders.Cart(cartItems);
@@ -21,6 +21,26 @@ public sealed class CartService(ICartStore cartStore, IProductCatalogGateway pro
     {
         var items = new Dictionary<string, int>(await cartStore.GetItemsAsync(cancellationToken));
         items[productId] = 1;
+
+        await cartStore.SaveItemsAsync(items, cancellationToken);
+    }
+
+    public async Task DecrementAsync(string productId, CancellationToken cancellationToken)
+    {
+        var items = new Dictionary<string, int>(await cartStore.GetItemsAsync(cancellationToken));
+        if (!items.TryGetValue(productId, out var quantity))
+        {
+            return;
+        }
+
+        if (quantity <= 1)
+        {
+            items.Remove(productId);
+        }
+        else
+        {
+            items[productId] = quantity - 1;
+        }
 
         await cartStore.SaveItemsAsync(items, cancellationToken);
     }

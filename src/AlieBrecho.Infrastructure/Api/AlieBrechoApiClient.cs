@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace AlieBrecho.Infrastructure.Api;
 
 internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
-    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway
+    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway, ICustomerGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -77,7 +77,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         await EnsureSuccessAsync(response, cancellationToken);
 
         var register = await ReadWrappedAsync<RegisterDto>(response, cancellationToken);
-        if (string.IsNullOrWhiteSpace(register.Data?.Email))
+        if (register.Data is null)
         {
             return null;
         }
@@ -85,7 +85,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return new RegisterResult
         {
             UserId = register.Data.UserId,
-            Email = register.Data.Email,
+            Email = string.IsNullOrWhiteSpace(register.Data.Email) ? request.Email : register.Data.Email,
             FirstName = register.Data.FirstName,
             LastName = register.Data.LastName,
             CompanyName = register.Data.CompanyName
@@ -96,6 +96,29 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     {
         var response = await GetWrappedAsync<List<ProductDto>>(_options.ProductsPath, cancellationToken);
         return response.Select(MapProduct).ToList();
+    }
+
+    public async Task CreateCustomerForRegistrationAsync(
+        string firstName,
+        string lastName,
+        string email,
+        CancellationToken cancellationToken)
+    {
+        var payload = new CreateCustomerPayload
+        {
+            Name = GetFullName(firstName, lastName),
+            EmailAddress = email,
+            Country = "Brasil",
+            CustomerStatus = "Active"
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.CreateCustomerPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
     }
 
     public async Task<Product?> GetProductAsync(string productId, CancellationToken cancellationToken)
@@ -384,6 +407,13 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     {
         var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length <= 1 ? string.Empty : string.Join(' ', parts.Skip(1));
+    }
+
+    private static string GetFullName(string firstName, string lastName)
+    {
+        return string.Join(' ', new[] { firstName, lastName }
+            .Where(part => !string.IsNullOrWhiteSpace(part))
+            .Select(part => part.Trim()));
     }
 
     private sealed record ApiResponse<T>(T? Data)

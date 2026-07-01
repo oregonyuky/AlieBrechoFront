@@ -31,14 +31,21 @@ public sealed class AuthenticationService(IAuthenticationGateway gateway)
         var register = await gateway.RegisterAsync(request, cancellationToken);
         if (register is null)
         {
-            return null;
+            throw new InvalidOperationException("A API nao retornou os dados da conta criada.");
         }
 
-        return await gateway.LoginAsync(new LoginRequest
+        var session = await gateway.LoginAsync(new LoginRequest
         {
             Email = request.Email,
             Password = request.Password,
             RememberMe = request.RememberMe
         }, cancellationToken);
+
+        if (session is null)
+        {
+            throw new InvalidOperationException("Conta criada, mas nao foi possivel entrar automaticamente. Tente fazer login com o e-mail e a senha cadastrados.");
+        }
+
+        return session;
     }
 }

@@ -1,3 +1,5 @@
+@using Microsoft.AspNetCore.Antiforgery
+@inject IAntiforgery Antiforgery
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,10 +10,55 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet" />
+    <meta name="request-verification-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
 <body>
     <div class="toast" id="toast"></div>
+
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Meu carrinho" aria-hidden="true">
+        <div class="cart-header">
+            <div class="cart-title">Meu Carrinho</div>
+            <button class="cart-close" id="cartClose" type="button" aria-label="Fechar carrinho">x</button>
+        </div>
+        <div class="cart-body" id="cartBody">
+            <div class="cart-empty-state" id="cartEmpty">
+                <span aria-hidden="true">Sacola</span>
+                <p>Seu carrinho esta vazio, linda.</p>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="frete-box">
+                <div class="frete-title">Calcular frete e prazo</div>
+                <div class="frete-sub">Informe seu CEP para ver opcoes de entrega</div>
+                <div class="frete-input-row">
+                    <input class="cep-input" type="text" placeholder="00000-000" maxlength="9" id="cepInput" inputmode="numeric" />
+                    <button class="btn-cep" id="calcFreteBtn" type="button">Calcular</button>
+                </div>
+                <div class="frete-error" id="freteError">CEP invalido. Verifique e tente novamente.</div>
+                <div class="frete-results" id="freteResults">
+                    <div class="frete-option">
+                        <div><div class="fo-name">PAC</div><div class="fo-prazo" id="pacPrazo"></div></div>
+                        <div class="fo-price" id="pacPrice"></div>
+                    </div>
+                    <div class="frete-option">
+                        <div><div class="fo-name">SEDEX</div><div class="fo-prazo" id="sedexPrazo"></div></div>
+                        <div class="fo-price" id="sedexPrice"></div>
+                    </div>
+                    <div class="frete-option">
+                        <div><div class="fo-name">Retirada na loja</div><div class="fo-prazo">Disponivel em 1 dia util</div></div>
+                        <div class="fo-price gratis">Gratis</div>
+                    </div>
+                </div>
+            </div>
+            <div class="cart-total-row">
+                <span class="cart-total-label">Total</span>
+                <span class="cart-total-val" id="cartTotal">R$ 0,00</span>
+            </div>
+            <a class="btn-checkout" asp-page="/Checkout/Index">Finalizar Pedido</a>
+        </div>
+    </aside>
 
     <div class="mobile-overlay" id="mobileOverlay"></div>
     <aside class="mobile-menu" id="mobileMenu" aria-label="Menu mobile">
@@ -60,7 +107,10 @@
                 <li><a asp-page="/Cart/Index">Carrinho</a></li>
             </ul>
             <div class="nav__actions">
-                <a class="nav__icon" asp-page="/Cart/Index" aria-label="Carrinho">Sacola</a>
+                <button class="nav__icon cart-nav-button" id="cartBtn" type="button" aria-label="Abrir carrinho">
+                    Sacola
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
                 @if (User.Identity?.IsAuthenticated == true)
                 {
                     <span class="nav__user">@User.Identity.Name</span>

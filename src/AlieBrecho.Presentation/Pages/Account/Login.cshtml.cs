@@ -21,6 +21,9 @@ public class LoginModel(AppAuthenticationService authenticationService) : PageMo
 
     public string? ErrorMessage { get; private set; }
 
+    [TempData]
+    public string? StatusMessage { get; set; }
+
     public void OnGet()
     {
     }

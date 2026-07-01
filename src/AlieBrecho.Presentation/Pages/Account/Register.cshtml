@@ -14,6 +14,11 @@
             <div class="notice">@Model.ErrorMessage</div>
         }
 
+        @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+        {
+            <div class="notice-success">@Model.StatusMessage</div>
+        }
+
         <form method="post" class="auth-form auth-form-grid">
             <input type="hidden" asp-for="ReturnUrl" />
 
@@ -29,39 +34,14 @@
                 <span asp-validation-for="Input.LastName"></span>
             </label>
 
-            <label class="full" asp-for="Input.CompanyName">
-                Empresa
-                <input asp-for="Input.CompanyName" autocomplete="organization" />
-                <span asp-validation-for="Input.CompanyName"></span>
-            </label>
-
             <label class="full" asp-for="Input.Email">
                 E-mail
                 <input asp-for="Input.Email" autocomplete="username" />
                 <span asp-validation-for="Input.Email"></span>
             </label>
 
-            <label asp-for="Input.Password">
-                Senha
-                <input asp-for="Input.Password" type="password" autocomplete="new-password" />
-                <span asp-validation-for="Input.Password"></span>
-            </label>
-
-            <label asp-for="Input.ConfirmPassword">
-                Confirmar senha
-                <input asp-for="Input.ConfirmPassword" type="password" autocomplete="new-password" />
-                <span asp-validation-for="Input.ConfirmPassword"></span>
-            </label>
-
-            <label class="check-label full">
-                <input asp-for="Input.RememberMe" />
-                Manter conectado
-            </label>
-
-            <button class="button full" type="submit">Criar conta</button>
+            <button class="button full" type="submit">Cadastrar cliente</button>
         </form>
-
-        <p class="auth-switch">Ja tem uma conta? <a asp-page="/Account/Login" asp-route-returnUrl="@Model.ReturnUrl">Entrar</a></p>
     </div>
 </section>
 

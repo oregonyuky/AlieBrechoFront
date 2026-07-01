@@ -22,7 +22,7 @@
                 <article class="cart-line">
                     <div>
                         <h2>@item.Product.Name</h2>
-                        <span>@item.Quantity x @item.Product.DisplayPrice.ToString("C")</span>
+                        <span>@item.Product.DisplayPrice.ToString("C")</span>
                     </div>
                     <strong>@item.Total.ToString("C")</strong>
                     <form method="post" asp-page-handler="Remove" asp-route-productId="@item.Product.Id">

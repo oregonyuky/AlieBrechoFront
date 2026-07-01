@@ -5,25 +5,254 @@
 }
 
 <section class="checkout-shell">
-    <h1>Finalizar pedido</h1>
+    <div class="checkout-layout">
+        <div class="checkout-left">
+            <div class="checkout-brand">
+                <a class="checkout-brand__logo" asp-page="/Index">Alie <em>Brecho</em></a>
+                <div class="checkout-brand__secure">Compra 100% segura</div>
+            </div>
 
-    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-    {
-        <div class="notice">@Model.ErrorMessage</div>
-    }
+            <h1 class="checkout-title">Check<em>out</em></h1>
 
-    <form method="post" class="checkout-form">
-        <label>Nome completo<input asp-for="Input.CustomerName" required /></label>
-        <label>E-mail<input asp-for="Input.Email" type="email" required /></label>
-        <label>Telefone<input asp-for="Input.PhoneNumber" required /></label>
-        <label>CEP<input asp-for="Input.PostCode" required /></label>
-        <label>Rua<input asp-for="Input.Street" required /></label>
-        <label>Numero<input asp-for="Input.Number" required /></label>
-        <label>Bairro<input asp-for="Input.Neighborhood" required /></label>
-        <label>Cidade<input asp-for="Input.City" required /></label>
-        <label>Estado<input asp-for="Input.State" maxlength="2" required /></label>
-        <label>Complemento<input asp-for="Input.Complement" /></label>
-        <label class="full">Observacoes<textarea asp-for="Input.Notes"></textarea></label>
-        <button class="button" type="submit">Enviar pedido</button>
-    </form>
+            @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+            {
+                <div class="notice">@Model.ErrorMessage</div>
+            }
+
+            @if (Model.Cart.IsEmpty)
+            {
+                <div class="checkout-step-card active">
+                    <div class="checkout-step-header">
+                        <div>
+                            <div class="checkout-step-label">Carrinho vazio</div>
+                            <div class="checkout-step-summary">Adicione uma peca antes de finalizar o pedido.</div>
+                        </div>
+                    </div>
+                    <div class="checkout-step-body">
+                        <a class="btn-confirm" asp-page="/Index">Ver produtos</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="progress-bar" id="checkoutProgress">
+                    <div class="progress-step active" id="prog-1"><div class="progress-dot"></div>Email</div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="prog-2"><div class="progress-dot"></div>Dados</div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="prog-3"><div class="progress-dot"></div>Entrega</div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="prog-4"><div class="progress-dot"></div>Pagamento</div>
+                </div>
+
+                <form method="post" class="checkout-form" id="checkoutForm" data-subtotal="@Model.Cart.Subtotal.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                    <div class="checkout-step-card active" id="card-1">
+                        <div class="checkout-step-header">
+                            <div class="checkout-step-header__left">
+                                <div class="checkout-step-num" id="num-1">1</div>
+                                <div>
+                                    <div class="checkout-step-label">E-mail</div>
+                                    <div class="checkout-step-summary" id="sum-1">Dados para confirmacao do pedido</div>
+                                </div>
+                            </div>
+                            <button class="btn-edit-step" type="button" data-edit-step="1">Editar</button>
+                        </div>
+                        <div class="checkout-step-body">
+                            <label class="field" id="field-email">
+                                E-mail
+                                <input asp-for="Input.Email" id="email" type="email" autocomplete="email" placeholder="seu@email.com" required />
+                                <span class="field__error">Digite um e-mail valido</span>
+                            </label>
+                            <button class="btn-confirm" type="button" data-confirm-step="1">Continuar</button>
+                        </div>
+                    </div>
+
+                    <div class="checkout-step-card" id="card-2">
+                        <div class="checkout-step-header">
+                            <div class="checkout-step-header__left">
+                                <div class="checkout-step-num" id="num-2">2</div>
+                                <div>
+                                    <div class="checkout-step-label">Dados pessoais</div>
+                                    <div class="checkout-step-summary" id="sum-2"></div>
+                                </div>
+                            </div>
+                            <button class="btn-edit-step" type="button" data-edit-step="2">Editar</button>
+                        </div>
+                        <div class="checkout-step-body checkout-form-grid checkout-form-grid--2">
+                            <label class="field" id="field-nome">
+                                Nome
+                                <input asp-for="Input.FirstName" id="nome" autocomplete="given-name" placeholder="Seu nome" required />
+                                <span class="field__error">Nome obrigatorio</span>
+                            </label>
+                            <label class="field" id="field-sobrenome">
+                                Sobrenome
+                                <input asp-for="Input.LastName" id="sobrenome" autocomplete="family-name" placeholder="Seu sobrenome" required />
+                                <span class="field__error">Sobrenome obrigatorio</span>
+                            </label>
+                            <label class="field" id="field-cpf">
+                                CPF
+                                <input asp-for="Input.Cpf" id="cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required />
+                                <span class="field__error">CPF invalido</span>
+                            </label>
+                            <label class="field" id="field-telefone">
+                                Telefone
+                                <input asp-for="Input.PhoneNumber" id="telefone" autocomplete="tel" inputmode="tel" placeholder="(00) 00000-0000" required />
+                                <span class="field__error">Telefone obrigatorio</span>
+                            </label>
+                            <button class="btn-confirm full" type="button" data-confirm-step="2">Continuar</button>
+                        </div>
+                    </div>
+
+                    <div class="checkout-step-card" id="card-3">
+                        <div class="checkout-step-header">
+                            <div class="checkout-step-header__left">
+                                <div class="checkout-step-num" id="num-3">3</div>
+                                <div>
+                                    <div class="checkout-step-label">Endereco de entrega</div>
+                                    <div class="checkout-step-summary" id="sum-3"></div>
+                                </div>
+                            </div>
+                            <button class="btn-edit-step" type="button" data-edit-step="3">Editar</button>
+                        </div>
+                        <div class="checkout-step-body checkout-form-grid checkout-form-grid--3">
+                            <div class="cep-row full">
+                                <label class="field" id="field-cep">
+                                    CEP
+                                    <input asp-for="Input.PostCode" id="cep" autocomplete="postal-code" inputmode="numeric" maxlength="9" placeholder="00000-000" required />
+                                    <span class="field__error">CEP invalido</span>
+                                </label>
+                                <button class="btn-cep" id="btnCep" type="button">Buscar</button>
+                            </div>
+                            <label class="field wide" id="field-rua">
+                                Rua
+                                <input asp-for="Input.Street" id="rua" autocomplete="street-address" required />
+                                <span class="field__error">Endereco obrigatorio</span>
+                            </label>
+                            <label class="field" id="field-numero">
+                                Numero
+                                <input asp-for="Input.Number" id="numero" required />
+                                <span class="field__error">Numero obrigatorio</span>
+                            </label>
+                            <label class="field" id="field-bairro">
+                                Bairro
+                                <input asp-for="Input.Neighborhood" id="bairro" required />
+                                <span class="field__error">Bairro obrigatorio</span>
+                            </label>
+                            <label class="field" id="field-cidade">
+                                Cidade
+                                <input asp-for="Input.City" id="cidade" required />
+                                <span class="field__error">Cidade obrigatoria</span>
+                            </label>
+                            <label class="field" id="field-estado">
+                                Estado
+                                <input asp-for="Input.State" id="estado" maxlength="2" required />
+                                <span class="field__error">UF obrigatoria</span>
+                            </label>
+                            <label class="field full">
+                                Complemento
+                                <input asp-for="Input.Complement" id="complemento" />
+                            </label>
+                            <div class="delivery-section full" id="delivery-section">
+                                <div class="delivery-title">Opcao de entrega</div>
+                                <div class="delivery-opts" id="deliveryOpts"></div>
+                            </div>
+                            <button class="btn-confirm full" type="button" data-confirm-step="3">Continuar</button>
+                        </div>
+                    </div>
+
+                    <div class="checkout-step-card" id="card-4">
+                        <div class="checkout-step-header">
+                            <div class="checkout-step-header__left">
+                                <div class="checkout-step-num" id="num-4">4</div>
+                                <div>
+                                    <div class="checkout-step-label">Pagamento</div>
+                                    <div class="checkout-step-summary" id="sum-4"></div>
+                                </div>
+                            </div>
+                            <button class="btn-edit-step" type="button" data-edit-step="4">Editar</button>
+                        </div>
+                        <div class="checkout-step-body">
+                            <div class="pix-box">
+                                <div class="pix-box__title">Pague com Pix</div>
+                                <div class="pix-box__desc">A loja confirma o pedido e envia as instrucoes de pagamento no atendimento.</div>
+                                <div class="pix-box__discount">3% de desconto no Pix: <strong id="pixPrice">@((Model.Cart.Subtotal * 0.97m).ToString("C"))</strong></div>
+                            </div>
+                            <label class="field full">Observacoes<textarea asp-for="Input.Notes" id="observacoes"></textarea></label>
+                            <button class="btn-confirm btn-confirm-final" id="btnFinalizar" type="submit">Finalizar pedido</button>
+                        </div>
+                    </div>
+                </form>
+            }
+        </div>
+
+        <aside class="checkout-right">
+            <h2 class="summary-title">Resumo do <em>pedido</em></h2>
+
+            @if (Model.Cart.IsEmpty)
+            {
+                <p class="checkout-empty-summary">Seu carrinho esta vazio.</p>
+            }
+            else
+            {
+                <div class="checkout-cart-items">
+                    @foreach (var item in Model.Cart.Items)
+                    {
+                        <div class="checkout-cart-item">
+                            <div class="checkout-cart-item__img">
+                                @if (!string.IsNullOrWhiteSpace(item.Product.MainImageUrl))
+                                {
+                                    <img src="@item.Product.MainImageUrl" alt="@item.Product.Name" />
+                                }
+                                else
+                                {
+                                    <span>@item.Product.Name</span>
+                                }
+                                <div class="checkout-cart-item__badge">@item.Quantity</div>
+                            </div>
+                            <div class="checkout-cart-item__info">
+                                <div class="checkout-cart-item__name">@item.Product.Name</div>
+                                <div class="checkout-cart-item__variant">@(item.Product.Sizes.FirstOrDefault()?.Size ?? "Tamanho unico")</div>
+                                <div class="checkout-cart-item__pricing">
+                                    <span class="checkout-cart-item__price">@item.Total.ToString("C")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="cupom-row">
+                    <input class="cupom-input" type="text" id="cupomInput" placeholder="Codigo de cupom" />
+                    <button class="btn-cupom" type="button" id="btnCupom">Aplicar</button>
+                </div>
+                <div id="cupomMsg"></div>
+
+                <div class="summary-totals">
+                    <div class="total-row">
+                        <span class="total-row__label">Subtotal</span>
+                        <span class="total-row__val" id="val-subtotal">@Model.Cart.Subtotal.ToString("C")</span>
+                    </div>
+                    <div class="total-row" id="row-desconto">
+                        <span class="total-row__label">Desconto</span>
+                        <span class="total-row__val desconto" id="val-desconto">- R$ 0,00</span>
+                    </div>
+                    <div class="total-row">
+                        <span class="total-row__label">Entrega</span>
+                        <span class="total-row__val calcular" id="val-entrega">A calcular</span>
+                    </div>
+                    <div class="total-row total-row--main">
+                        <span class="total-row__label">Total</span>
+                        <span class="total-row__val" id="val-total">@Model.Cart.Subtotal.ToString("C")</span>
+                    </div>
+                </div>
+
+                <div class="summary-pix">
+                    <p>No <strong>Pix</strong>: <strong id="pixSummary">@((Model.Cart.Subtotal * 0.97m).ToString("C"))</strong></p>
+                </div>
+
+                <div class="summary-guarantees">
+                    <div class="guarantee">Pagamento seguro e atendimento personalizado</div>
+                </div>
+            }
+        </aside>
+    </div>
 </section>

@@ -48,7 +48,7 @@
                 </div>
             }
 
-            <form method="post" asp-page-handler="Add" asp-route-id="@Model.Product.Id" class="buy-box">
+            <form method="post" asp-page="/Cart/Index" asp-page-handler="Add" asp-route-productId="@Model.Product.Id" class="buy-box" data-cart-form>
                 <button class="button" type="submit">Adicionar ao carrinho</button>
             </form>
 
