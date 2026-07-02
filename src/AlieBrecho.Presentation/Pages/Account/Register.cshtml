@@ -40,6 +40,18 @@
                 <span asp-validation-for="Input.Email"></span>
             </label>
 
+            <label asp-for="Input.Password">
+                Senha
+                <input asp-for="Input.Password" type="password" autocomplete="new-password" />
+                <span asp-validation-for="Input.Password"></span>
+            </label>
+
+            <label asp-for="Input.ConfirmPassword">
+                Confirmar senha
+                <input asp-for="Input.ConfirmPassword" type="password" autocomplete="new-password" />
+                <span asp-validation-for="Input.ConfirmPassword"></span>
+            </label>
+
             <button class="button full" type="submit">Cadastrar cliente</button>
         </form>
     </div>

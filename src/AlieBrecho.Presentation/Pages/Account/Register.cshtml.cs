@@ -37,6 +37,8 @@ public class RegisterModel(ICustomerGateway customerGateway) : PageModel
                 Input.FirstName,
                 Input.LastName,
                 Input.Email,
+                Input.Password,
+                Input.ConfirmPassword,
                 cancellationToken);
 
             StatusMessage = "Cadastro realizado com sucesso.";
@@ -64,5 +66,13 @@ public class RegisterModel(ICustomerGateway customerGateway) : PageModel
         [Required(ErrorMessage = "Informe o e-mail.")]
         [EmailAddress(ErrorMessage = "Informe um e-mail valido.")]
         public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Informe a senha.")]
+        [StringLength(100, MinimumLength = 6, ErrorMessage = "A senha deve ter pelo menos {2} caracteres.")]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Confirme a senha.")]
+        [Compare(nameof(Password), ErrorMessage = "As senhas nao conferem.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

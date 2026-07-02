@@ -102,12 +102,16 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         string firstName,
         string lastName,
         string email,
+        string password,
+        string confirmPassword,
         CancellationToken cancellationToken)
     {
         var payload = new CreateCustomerPayload
         {
             Name = GetFullName(firstName, lastName),
             EmailAddress = email,
+            Password = password,
+            ConfirmPassword = confirmPassword,
             Country = "Brasil",
             CustomerStatus = "Active"
         };
@@ -506,6 +510,8 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public string? Name { get; init; }
         public string? PhoneNumber { get; init; }
         public string? EmailAddress { get; init; }
+        public string? Password { get; init; }
+        public string? ConfirmPassword { get; init; }
         public string? Street { get; init; }
         public string? Number { get; init; }
         public string? Neighborhood { get; init; }
