@@ -855,6 +855,101 @@ async function initInstagramFeed() {
 
 initInstagramFeed();
 
+async function initDropCountdown() {
+  const banner = document.getElementById("drop");
+  if (!banner) {
+    return;
+  }
+
+  const endpoint = banner.dataset.dropEndpoint || "/api/drop-config/active";
+  const title = banner.querySelector(".drop-banner__title") || document.getElementById("dropTitle");
+  const subtitle = banner.querySelector(".drop-banner__desc") || document.getElementById("dropSubtitle");
+  const actionButton = document.getElementById("dropActionButton");
+  const daysEl = document.getElementById("cd-days");
+  const hoursEl = document.getElementById("cd-hours");
+  const minsEl = document.getElementById("cd-mins");
+  const secsEl = document.getElementById("cd-secs");
+
+  const setTime = (days, hours, mins, secs) => {
+    if (daysEl) daysEl.textContent = String(days).padStart(2, "0");
+    if (hoursEl) hoursEl.textContent = String(hours).padStart(2, "0");
+    if (minsEl) minsEl.textContent = String(mins).padStart(2, "0");
+    if (secsEl) secsEl.textContent = String(secs).padStart(2, "0");
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (!response.ok) {
+      banner.hidden = true;
+      return;
+    }
+
+    const drop = await response.json();
+    const releaseDateValue = drop.dataLiberacaoUtc || drop.dataLiberacao;
+    const releaseDate = new Date(releaseDateValue);
+
+    if (Number.isNaN(releaseDate.getTime())) {
+      banner.hidden = true;
+      return;
+    }
+
+    if (title && drop.titulo) {
+      title.innerHTML = `${escapeHtml(drop.titulo)}<br>CHEGANDO<br><em>EM BREVE</em>`;
+    }
+
+    if (subtitle && drop.subtitulo) {
+      subtitle.textContent = drop.subtitulo;
+    }
+
+    let intervalId;
+    let isReleased = false;
+    const tick = () => {
+      const remaining = releaseDate.getTime() - Date.now();
+
+      if (remaining <= 0) {
+        isReleased = true;
+        window.clearInterval(intervalId);
+        setTime(0, 0, 0, 0);
+
+        if (title && drop.titulo) {
+          title.innerHTML = `${escapeHtml(drop.titulo)}<br><em>LIBERADO</em>`;
+        }
+
+        if (actionButton) {
+          actionButton.textContent = "DROP LIBERADO";
+        }
+        return;
+      }
+
+      const totalSeconds = Math.floor(remaining / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const mins = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+      setTime(days, hours, mins, secs);
+    };
+
+    actionButton?.addEventListener("click", () => {
+      if (isReleased) {
+        document.getElementById("pecas")?.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+
+      showToast("Voce vai ser avisada quando o drop liberar.");
+    });
+
+    tick();
+    intervalId = window.setInterval(tick, 1000);
+  } catch {
+    banner.hidden = true;
+  }
+}
+
+initDropCountdown();
+
 document.getElementById("newsletterBtn")?.addEventListener("click", () => {
   showToast("Obrigada. Voce vai receber os proximos drops.");
 });

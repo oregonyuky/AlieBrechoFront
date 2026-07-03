@@ -101,6 +101,13 @@ app.MapGet("/api/instagram/latest", async (
     var posts = await instagramFeedService.GetLatestPostsAsync(cancellationToken);
     return Results.Ok(posts);
 }).AllowAnonymous();
+app.MapGet("/api/drop-config/active", async (
+    IDropConfigGateway dropConfigGateway,
+    CancellationToken cancellationToken) =>
+{
+    var dropConfig = await dropConfigGateway.GetActiveDropConfigAsync(cancellationToken);
+    return dropConfig is null ? Results.NotFound() : Results.Ok(dropConfig);
+}).AllowAnonymous();
 app.MapRazorPages()
    .WithStaticAssets();
 

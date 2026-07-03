@@ -14,4 +14,5 @@ public sealed class AlieBrechoApiOptions
     public string OrdersPath { get; init; } = "api/Order/CreateOrder";
     public string LoginPath { get; init; } = "api/Security/Login";
     public string RegisterPath { get; init; } = "api/Security/Register";
+    public string DropConfigActivePath { get; init; } = "api/drop-config/active";
 }

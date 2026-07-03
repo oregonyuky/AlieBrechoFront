@@ -32,6 +32,8 @@ public static class DependencyInjection
             provider.GetRequiredService<AlieBrechoApiClient>());
         services.AddScoped<ICustomerGateway>(provider =>
             provider.GetRequiredService<AlieBrechoApiClient>());
+        services.AddScoped<IDropConfigGateway>(provider =>
+            provider.GetRequiredService<AlieBrechoApiClient>());
 
         return services;
     }

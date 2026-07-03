@@ -180,6 +180,48 @@
             </div>
         </div>
     </section>
+
+    <section class="drop-banner reveal" id="drop" data-drop-endpoint="/api/drop-config/active">
+        <div class="drop-banner__left">
+            <p class="drop-banner__eyebrow">Lancamento exclusivo</p>
+            <h2 class="drop-banner__title" id="dropTitle">
+                DROP<br />
+                CHEGANDO<br />
+                <em>EM BREVE</em>
+            </h2>
+            <p class="drop-banner__desc" id="dropSubtitle">
+                A proxima colecao foi feita para quem vive a rua e nao segue regras.
+                Quantidades extremamente limitadas.
+            </p>
+        </div>
+
+        <div class="drop-banner__right">
+            <div class="countdown">
+                <div class="countdown__item">
+                    <span class="countdown__num" id="cd-days">00</span>
+                    <span class="countdown__label">Dias</span>
+                </div>
+                <span class="countdown__sep">:</span>
+                <div class="countdown__item">
+                    <span class="countdown__num" id="cd-hours">00</span>
+                    <span class="countdown__label">Horas</span>
+                </div>
+                <span class="countdown__sep">:</span>
+                <div class="countdown__item">
+                    <span class="countdown__num" id="cd-mins">00</span>
+                    <span class="countdown__label">Min</span>
+                </div>
+                <span class="countdown__sep">:</span>
+                <div class="countdown__item">
+                    <span class="countdown__num" id="cd-secs">00</span>
+                    <span class="countdown__label">Seg</span>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="dropActionButton" type="button">Ser Avisado</button>
+        </div>
+    </section>
+
     <section class="insta-section" aria-label="Instagram Alie Brecho">
         <div class="insta-grid" id="instagramGrid" data-instagram-endpoint="/api/instagram/latest">
             @for (var index = 1; index <= 6; index++)

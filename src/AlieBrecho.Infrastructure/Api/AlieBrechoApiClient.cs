@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using AlieBrecho.Application.Abstractions;
 using AlieBrecho.Domain.Auth;
+using AlieBrecho.Domain.Marketing;
 using AlieBrecho.Domain.Orders;
 using AlieBrecho.Domain.Products;
 using Microsoft.Extensions.Options;
@@ -10,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace AlieBrecho.Infrastructure.Api;
 
 internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
-    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway, ICustomerGateway
+    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -156,6 +157,15 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         {
             return [];
         }
+    }
+
+    public async Task<DropConfig?> GetActiveDropConfigAsync(CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.GetAsync(_options.DropConfigActivePath, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<DropConfigDto>(response, cancellationToken);
+        return result.Data is null ? null : MapDropConfig(result.Data);
     }
 
     public async Task<string?> CreateOrderAsync(
@@ -445,6 +455,20 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         };
     }
 
+    private static DropConfig MapDropConfig(DropConfigDto dto)
+    {
+        return new DropConfig
+        {
+            Id = dto.Id,
+            Titulo = dto.Titulo ?? string.Empty,
+            Subtitulo = dto.Subtitulo,
+            DataLiberacao = dto.DataLiberacaoUtc,
+            Ativo = dto.Ativo,
+            CreatedAt = dto.CreatedAt,
+            UpdatedAt = dto.UpdatedAt
+        };
+    }
+
     private string? ResolveImageUrl(string? imageUrl)
     {
         if (string.IsNullOrWhiteSpace(imageUrl))
@@ -559,6 +583,17 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public string? Name { get; init; }
         public string? Description { get; init; }
         public bool IsActive { get; init; } = true;
+    }
+
+    private sealed record DropConfigDto
+    {
+        public string? Id { get; init; }
+        public string? Titulo { get; init; }
+        public string? Subtitulo { get; init; }
+        public DateTime DataLiberacaoUtc { get; init; }
+        public bool Ativo { get; init; }
+        public DateTime CreatedAt { get; init; }
+        public DateTime? UpdatedAt { get; init; }
     }
 
     private sealed record OrderDto
