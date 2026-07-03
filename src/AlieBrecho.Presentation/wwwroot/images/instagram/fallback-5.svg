@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <rect width="900" height="900" fill="#faf7f2"/>
+  <circle cx="450" cy="450" r="310" fill="#8a9e8c" opacity=".22"/>
+  <path d="M451 164c151 99 223 215 214 348-8 116-79 198-214 246-136-48-207-130-215-246-9-133 63-249 215-348Z" fill="#7a5c58"/>
+  <path d="M451 250v408" stroke="#faf7f2" stroke-width="18" stroke-linecap="round"/>
+  <path d="M451 428c-74-8-130-40-169-96" stroke="#faf7f2" stroke-width="18" stroke-linecap="round"/>
+  <path d="M451 528c76-12 134-46 174-102" stroke="#faf7f2" stroke-width="18" stroke-linecap="round"/>
+  <text x="450" y="824" text-anchor="middle" fill="#c4786a" font-family="Georgia,serif" font-size="62" font-style="italic">moda circular</text>
+</svg>

@@ -5,6 +5,7 @@ using AlieBrecho.Application.Checkout;
 using AlieBrecho.Domain.Auth;
 using AlieBrecho.Infrastructure;
 using AlieBrecho.Presentation.Infrastructure;
+using AlieBrecho.Presentation.Instagram;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -70,6 +71,12 @@ builder.Services.AddScoped<AppAuthenticationService>();
 builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<CheckoutService>();
+builder.Services.Configure<InstagramOptions>(
+    builder.Configuration.GetSection(InstagramOptions.SectionName));
+builder.Services.AddHttpClient<InstagramFeedService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
@@ -87,6 +94,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapGet("/api/instagram/latest", async (
+    InstagramFeedService instagramFeedService,
+    CancellationToken cancellationToken) =>
+{
+    var posts = await instagramFeedService.GetLatestPostsAsync(cancellationToken);
+    return Results.Ok(posts);
+}).AllowAnonymous();
 app.MapRazorPages()
    .WithStaticAssets();
 

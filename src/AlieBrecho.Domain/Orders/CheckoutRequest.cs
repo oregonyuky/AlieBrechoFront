@@ -2,6 +2,7 @@ namespace AlieBrecho.Domain.Orders;
 
 public sealed record CheckoutRequest
 {
+    public string? CustomerId { get; init; }
     public string FirstName { get; init; } = string.Empty;
     public string LastName { get; init; } = string.Empty;
     public string? Cpf { get; init; }

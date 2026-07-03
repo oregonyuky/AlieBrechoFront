@@ -1,5 +1,7 @@
 const navbar = document.getElementById("navbar");
 const topRibbon = document.getElementById("topRibbon");
+const accountMenu = document.getElementById("accountMenu");
+const accountMenuToggle = document.getElementById("accountMenuToggle");
 
 function syncNavState() {
   const scrolled = window.scrollY > 0;
@@ -11,12 +13,30 @@ function syncNavState() {
 window.addEventListener("scroll", syncNavState, { passive: true });
 syncNavState();
 
+function closeAccountMenu() {
+  accountMenu?.classList.remove("open");
+  accountMenuToggle?.setAttribute("aria-expanded", "false");
+}
+
+accountMenuToggle?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const isOpen = accountMenu?.classList.toggle("open") ?? false;
+  accountMenuToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+document.addEventListener("click", (event) => {
+  if (!accountMenu?.contains(event.target)) {
+    closeAccountMenu();
+  }
+});
+
 const hamburger = document.getElementById("hamburger");
 const mobileMenu = document.getElementById("mobileMenu");
 const mobileClose = document.getElementById("mobileClose");
 const mobileOverlay = document.getElementById("mobileOverlay");
 
 function openMenu() {
+  closeAccountMenu();
   hamburger?.classList.add("open");
   mobileMenu?.classList.add("open");
   mobileOverlay?.classList.add("open");
@@ -323,6 +343,10 @@ document.querySelectorAll("[data-cart-form]").forEach((form) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeAccountMenu();
+  }
+
   if (event.key === "Escape" && cartDrawer?.classList.contains("open")) {
     closeCart();
   }
@@ -780,6 +804,56 @@ function initCheckoutDynamics() {
 }
 
 initCheckoutDynamics();
+
+async function initInstagramFeed() {
+  const grid = document.getElementById("instagramGrid");
+  if (!grid) {
+    return;
+  }
+
+  const endpoint = grid.dataset.instagramEndpoint || "/api/instagram/latest";
+
+  try {
+    const response = await fetch(endpoint, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (!response.ok) {
+      throw new Error("Nao foi possivel carregar o Instagram.");
+    }
+
+    const posts = await response.json();
+    if (!Array.isArray(posts) || posts.length === 0) {
+      return;
+    }
+
+    grid.innerHTML = posts.slice(0, 6).map((post, index) => {
+      const imageUrl = escapeHtml(post.imageUrl);
+      const permalink = escapeHtml(post.permalink || "https://www.instagram.com/alie.brecho/");
+      const caption = escapeHtml(post.caption || `Publicacao Alie Brecho ${index + 1}`);
+      const likes = Number(post.likeCount ?? 0).toLocaleString("pt-BR");
+      const comments = Number(post.commentsCount ?? 0).toLocaleString("pt-BR");
+
+      return `
+        <a class="insta-card" href="${permalink}" target="_blank" rel="noreferrer">
+          <div class="insta-card__img">
+            <img src="${imageUrl}" alt="${caption}" loading="lazy">
+            <div class="insta-card__overlay">
+              <div class="insta-card__stats">
+                <span>${likes} curtidas</span>
+                <span>${comments} comentarios</span>
+              </div>
+            </div>
+          </div>
+        </a>
+      `;
+    }).join("");
+  } catch {
+    showToast("Instagram indisponivel. Exibindo imagens locais.");
+  }
+}
+
+initInstagramFeed();
 
 document.getElementById("newsletterBtn")?.addEventListener("click", () => {
   showToast("Obrigada. Voce vai receber os proximos drops.");

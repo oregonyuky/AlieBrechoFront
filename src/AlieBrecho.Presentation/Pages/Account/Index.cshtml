@@ -1,0 +1,28 @@
+@page
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@{
+    ViewData["Title"] = "Minha conta";
+    var displayName = User.Identity?.Name ?? "Cliente";
+    var email = User.FindFirst(ClaimTypes.Email)?.Value;
+}
+
+<section class="account-shell">
+    <div class="account-page-header">
+        <span class="eyebrow">Minha conta</span>
+        <h1>Ola, <em>@displayName</em></h1>
+    </div>
+
+    <div class="account-panel">
+        <div>
+            <span class="account-panel__label">Nome</span>
+            <strong>@displayName</strong>
+        </div>
+        <div>
+            <span class="account-panel__label">E-mail</span>
+            <strong>@(email ?? "E-mail nao informado")</strong>
+        </div>
+        <a class="button" asp-page="/Orders/Index">Ver meus pedidos</a>
+    </div>
+</section>

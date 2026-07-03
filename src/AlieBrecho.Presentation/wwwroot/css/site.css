@@ -52,6 +52,16 @@ img {
   max-width: 100%;
 }
 
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 main {
   position: relative;
   z-index: 1;
@@ -178,19 +188,34 @@ main {
 .nav__actions {
   align-items: center;
   display: flex;
-  gap: 18px;
+  gap: 12px;
 }
 
 .cart-nav-button {
   align-items: center;
-  background: transparent;
-  border: 0;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(196, 120, 106, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 10px 28px rgba(42, 31, 30, 0.08);
   cursor: pointer;
   display: inline-flex;
   font-family: var(--font-sans);
   gap: 8px;
+  height: 42px;
+  justify-content: center;
   padding: 0;
   position: relative;
+  width: 42px;
+}
+
+.nav-svg {
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 20px;
 }
 
 .cart-badge {
@@ -205,6 +230,105 @@ main {
   letter-spacing: 0;
   min-width: 18px;
   padding: 0 5px;
+  position: absolute;
+  right: -5px;
+  top: -5px;
+}
+
+.account-menu {
+  position: relative;
+}
+
+.account-menu__trigger {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(196, 120, 106, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 10px 28px rgba(42, 31, 30, 0.08);
+  color: var(--mauve);
+  cursor: pointer;
+  display: inline-flex;
+  height: 42px;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+  width: 42px;
+}
+
+.cart-nav-button:hover,
+.account-menu__trigger:hover,
+.account-menu.open .account-menu__trigger {
+  background: #fff;
+  border-color: rgba(196, 120, 106, 0.48);
+  color: var(--rose);
+  transform: translateY(-1px);
+}
+
+.account-avatar {
+  align-items: center;
+  background: linear-gradient(135deg, var(--rose), var(--mauve));
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  height: 32px;
+  justify-content: center;
+  letter-spacing: 0.5px;
+  width: 32px;
+}
+
+.account-menu__dropdown {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(196, 120, 106, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(42, 31, 30, 0.16);
+  display: grid;
+  gap: 2px;
+  min-width: 180px;
+  opacity: 0;
+  padding: 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 140;
+}
+
+.account-menu.open .account-menu__dropdown {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.account-menu__dropdown a,
+.account-menu__dropdown button {
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--dark);
+  cursor: pointer;
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  padding: 12px 14px;
+  text-align: left;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.account-menu__dropdown a:hover,
+.account-menu__dropdown button:hover {
+  background: rgba(196, 120, 106, 0.08);
+  color: var(--rose);
+}
+
+.account-menu__dropdown form {
+  margin: 0;
 }
 
 .logout-form {
@@ -354,6 +478,20 @@ main {
   text-align: center;
   text-transform: uppercase;
   width: 100%;
+}
+
+.mobile-menu__link-button {
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  color: var(--mauve);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  padding: 13px;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .mobile-overlay {
@@ -1625,36 +1763,23 @@ button.button {
 .insta-card__img {
   align-items: center;
   aspect-ratio: 1;
+  background: var(--parchment);
   border-radius: 8px;
   display: flex;
-  font-size: clamp(34px, 4vw, 58px);
   justify-content: center;
   overflow: hidden;
   position: relative;
 }
 
-.insta-card__img--dress {
-  background: radial-gradient(ellipse at 35% 30%, rgba(232, 196, 184, 0.8), rgba(196, 120, 106, 0.5));
+.insta-card__img img {
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+  width: 100%;
 }
 
-.insta-card__img--coat {
-  background: radial-gradient(ellipse at 35% 30%, rgba(155, 123, 115, 0.6), rgba(122, 92, 88, 0.5));
-}
-
-.insta-card__img--leaf {
-  background: radial-gradient(ellipse at 35% 30%, rgba(138, 158, 140, 0.6), rgba(42, 31, 30, 0.3));
-}
-
-.insta-card__img--bag {
-  background: radial-gradient(ellipse at 35% 30%, rgba(232, 196, 184, 0.5), rgba(250, 247, 242, 0.8));
-}
-
-.insta-card__img--flower {
-  background: radial-gradient(ellipse at 35% 30%, rgba(196, 120, 106, 0.4), rgba(155, 123, 115, 0.6));
-}
-
-.insta-card__img--spark {
-  background: radial-gradient(ellipse at 35% 30%, rgba(122, 92, 88, 0.5), rgba(232, 196, 184, 0.4));
+.insta-card:hover .insta-card__img img {
+  transform: scale(1.04);
 }
 
 .insta-card__overlay {
@@ -1676,10 +1801,12 @@ button.button {
 .insta-card__stats {
   display: flex;
   flex-wrap: wrap;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   gap: 14px;
   justify-content: center;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .insta-cta {
@@ -2174,6 +2301,67 @@ textarea {
 .auth-form span {
   color: #9f2f2f;
   font-size: 0.9rem;
+}
+
+.account-shell {
+  display: grid;
+  gap: 28px;
+  margin: 0 auto;
+  max-width: 820px;
+  min-height: calc(100vh - 180px);
+  padding: 180px 28px 72px;
+  place-content: center;
+  width: 100%;
+}
+
+.account-page-header {
+  text-align: center;
+}
+
+.account-page-header h1 {
+  color: var(--dark);
+  font-family: var(--font-serif);
+  font-size: clamp(42px, 6vw, 70px);
+  font-weight: 300;
+  line-height: 1;
+}
+
+.account-page-header h1 em {
+  color: var(--rose);
+  font-style: italic;
+}
+
+.account-panel {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  display: grid;
+  gap: 16px;
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.account-panel__label {
+  color: var(--warm-gray);
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.account-panel strong {
+  color: var(--dark);
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 400;
+}
+
+.account-empty {
+  color: var(--warm-gray);
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: center;
 }
 
 .check-label {

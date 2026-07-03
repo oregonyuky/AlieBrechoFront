@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <rect width="900" height="900" fill="#f2ede4"/>
+  <path d="M158 184h584v532H158z" fill="#2a1f1e"/>
+  <path d="M208 234h484v432H208z" fill="#faf7f2"/>
+  <path d="M292 292h316v70H292z" fill="#c4786a"/>
+  <path d="M292 414h316v54H292z" fill="#e8c4b8"/>
+  <path d="M292 520h216v54H292z" fill="#8a9e8c"/>
+  <circle cx="626" cy="552" r="56" fill="#b85c4a"/>
+  <text x="450" y="805" text-anchor="middle" fill="#7a5c58" font-family="Arial,sans-serif" font-size="40" font-weight="700" letter-spacing="7">NOVIDADES</text>
+</svg>

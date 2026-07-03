@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <rect width="900" height="900" fill="#faf7f2"/>
+  <rect x="126" y="126" width="648" height="648" rx="44" fill="#d8c9bc"/>
+  <path d="M220 500c128-150 260-190 396-119 70 37 117 94 142 171v222H126V614c25-36 56-74 94-114Z" fill="#7a5c58"/>
+  <path d="M338 250h224l43 172H295l43-172Z" fill="#c4786a"/>
+  <path d="M378 250c18-58 126-58 144 0" fill="none" stroke="#2a1f1e" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="640" cy="254" r="42" fill="#8a9e8c"/>
+  <text x="450" y="830" text-anchor="middle" fill="#faf7f2" font-family="Arial,sans-serif" font-size="36" font-weight="700" letter-spacing="5">DROP ALIE</text>
+</svg>

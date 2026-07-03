@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <rect width="900" height="900" fill="#f2ede4"/>
+  <path d="M116 718c180-20 260-96 240-228-12-84 18-157 89-218 72 61 103 134 91 218-20 132 60 208 240 228-123 71-245 106-365 106-101 0-199-35-295-106Z" fill="#b85c4a"/>
+  <path d="M245 318c72-63 142-95 210-95 66 0 133 32 200 95" fill="none" stroke="#2a1f1e" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="194" cy="190" r="80" fill="#e8c4b8"/>
+  <circle cx="726" cy="210" r="60" fill="#8a9e8c" opacity=".6"/>
+  <text x="450" y="108" text-anchor="middle" fill="#7a5c58" font-family="Georgia,serif" font-size="58" font-style="italic">curadoria</text>
+</svg>

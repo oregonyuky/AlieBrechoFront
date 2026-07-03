@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Antiforgery
+@using System.Security.Claims
 @inject IAntiforgery Antiforgery
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -73,6 +74,8 @@
         <div class="mobile-menu__footer">
             @if (User.Identity?.IsAuthenticated == true)
             {
+                <a class="mobile-menu__link-button" asp-page="/Account/Index">Minha conta</a>
+                <a class="mobile-menu__link-button" asp-page="/Orders/Index">Meus pedidos</a>
                 <form method="post" asp-page="/Account/Logout">
                     <button class="mobile-menu__enter" type="submit">Sair</button>
                 </form>
@@ -97,6 +100,18 @@
         </div>
     </div>
 
+    @{
+        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+        var displayName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
+        var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var initials = nameParts.Length switch
+        {
+            0 => "A",
+            1 => nameParts[0][..1].ToUpperInvariant(),
+            _ => string.Concat(nameParts[0][..1], nameParts[^1][..1]).ToUpperInvariant()
+        };
+    }
+
     <header>
         <nav id="navbar" aria-label="Principal">
             <a class="nav__logo" asp-page="/Index">Alie <em>Brecho</em></a>
@@ -104,25 +119,46 @@
                 <li><a asp-page="/Index" asp-fragment="categorias">Categorias</a></li>
                 <li><a asp-page="/Index" asp-fragment="pecas">Pecas</a></li>
                 <li><a asp-page="/Index" asp-fragment="sobre">Nossa historia</a></li>
-                <li><a asp-page="/Cart/Index">Carrinho</a></li>
             </ul>
             <div class="nav__actions">
                 <button class="nav__icon cart-nav-button" id="cartBtn" type="button" aria-label="Abrir carrinho">
-                    Sacola
+                    <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6.5 8.5h11l-.7 10.1a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 8.5Z"></path>
+                        <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path>
+                    </svg>
+                    <span class="sr-only">Carrinho</span>
                     <span class="cart-badge" id="cartBadge">0</span>
                 </button>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <span class="nav__user">@User.Identity.Name</span>
-                    <form method="post" asp-page="/Account/Logout" class="logout-form">
-                        <button class="btn-nav-outline" type="submit">Sair</button>
-                    </form>
-                }
-                else
-                {
-                    <a class="btn-nav-outline" asp-page="/Account/Login">Entrar</a>
-                    <a class="btn-nav-outline btn-nav-filled" asp-page="/Account/Register">Cadastrar</a>
-                }
+                <div class="account-menu" id="accountMenu">
+                    <button class="account-menu__trigger" id="accountMenuToggle" type="button" aria-label="Abrir menu da conta" aria-haspopup="true" aria-expanded="false">
+                        @if (isAuthenticated)
+                        {
+                            <span class="account-avatar">@initials</span>
+                        }
+                        else
+                        {
+                            <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+                                <path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path>
+                            </svg>
+                        }
+                    </button>
+                    <div class="account-menu__dropdown" role="menu" aria-labelledby="accountMenuToggle">
+                        @if (isAuthenticated)
+                        {
+                            <a role="menuitem" asp-page="/Account/Index">Minha conta</a>
+                            <a role="menuitem" asp-page="/Orders/Index">Meus pedidos</a>
+                            <form method="post" asp-page="/Account/Logout">
+                                <button role="menuitem" type="submit">Sair</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a role="menuitem" asp-page="/Account/Login">Entrar</a>
+                            <a role="menuitem" asp-page="/Account/Register">Criar conta</a>
+                        }
+                    </div>
+                </div>
                 <button class="hamburger" id="hamburger" type="button" aria-label="Abrir menu">
                     <span></span><span></span><span></span>
                 </button>

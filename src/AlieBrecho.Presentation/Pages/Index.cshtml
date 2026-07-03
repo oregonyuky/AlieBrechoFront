@@ -181,73 +181,21 @@
         </div>
     </section>
     <section class="insta-section" aria-label="Instagram Alie Brecho">
-        <div class="insta-grid">
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--dress">
-                    <span>👗</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 248</span>
-                            <span>💬 14</span>
+        <div class="insta-grid" id="instagramGrid" data-instagram-endpoint="/api/instagram/latest">
+            @for (var index = 1; index <= 6; index++)
+            {
+                <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
+                    <div class="insta-card__img">
+                        <img src="/images/instagram/fallback-@(index).svg" alt="Publicacao Alie Brecho @index" loading="lazy" />
+                        <div class="insta-card__overlay">
+                            <div class="insta-card__stats">
+                                <span>0 curtidas</span>
+                                <span>0 comentarios</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </a>
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--coat">
-                    <span>🧥</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 312</span>
-                            <span>💬 22</span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--leaf">
-                    <span>🌿</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 189</span>
-                            <span>💬 9</span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--bag">
-                    <span>👜</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 421</span>
-                            <span>💬 31</span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--flower">
-                    <span>🌸</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 276</span>
-                            <span>💬 18</span>
-                        </div>
-                    </div>
-                </div>
-            </a>
-            <a class="insta-card" href="https://www.instagram.com/alie.brecho/" target="_blank" rel="noreferrer">
-                <div class="insta-card__img insta-card__img--spark">
-                    <span>✨</span>
-                    <div class="insta-card__overlay">
-                        <div class="insta-card__stats">
-                            <span>♥ 358</span>
-                            <span>💬 27</span>
-                        </div>
-                    </div>
-                </div>
-            </a>
+                </a>
+            }
         </div>
 
         <div class="insta-cta">

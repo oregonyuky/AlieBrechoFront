@@ -163,10 +163,10 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         Cart cart,
         CancellationToken cancellationToken)
     {
-        var customer = await CreateCustomerAsync(request, cancellationToken);
+        var customerId = await SaveCustomerFromCheckoutAsync(request, cancellationToken);
         var payload = new CreateOrderPayload
         {
-            CustomerId = customer.Id,
+            CustomerId = customerId,
             Status = "Pending",
             Notes = request.Notes,
             ShippingDetail = new ShippingDetailPayload
@@ -203,25 +203,25 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return result?.Data?.Id;
     }
 
+    private async Task<string?> SaveCustomerFromCheckoutAsync(
+        CheckoutRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            await UpdateCustomerAsync(request, request.CustomerId, cancellationToken);
+            return request.CustomerId;
+        }
+
+        var customer = await CreateCustomerAsync(request, cancellationToken);
+        return customer.Id;
+    }
+
     private async Task<CustomerDto> CreateCustomerAsync(
         CheckoutRequest request,
         CancellationToken cancellationToken)
     {
-        var payload = new CreateCustomerPayload
-        {
-            Name = request.CustomerName,
-            PhoneNumber = request.PhoneNumber,
-            EmailAddress = request.Email,
-            Street = request.Street,
-            Number = request.Number,
-            Neighborhood = request.Neighborhood,
-            Complement = request.Complement,
-            City = request.City,
-            State = request.State,
-            PostalCode = request.PostCode,
-            Country = "Brasil",
-            CustomerStatus = "Active"
-        };
+        var payload = BuildCustomerPayload(request, existingCustomer: null);
 
         using var response = await httpClient.PostAsJsonAsync(
             _options.CreateCustomerPath,
@@ -233,6 +233,72 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
 
         var customer = await ReadWrappedAsync<CustomerDto>(response, cancellationToken);
         return customer?.Data ?? throw new InvalidOperationException("A API nao retornou o cliente criado.");
+    }
+
+    private async Task UpdateCustomerAsync(
+        CheckoutRequest request,
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        var existingCustomer = await GetCustomerAsync(customerId, cancellationToken);
+        var payload = BuildCustomerPayload(request, existingCustomer) with
+        {
+            Id = customerId
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.UpdateCustomerPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
+    private async Task<CustomerDto?> GetCustomerAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        var detailPath = _options.CustomerDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(customerId));
+
+        try
+        {
+            var customer = await GetWrappedAsync<CustomerDto>(detailPath, cancellationToken);
+            return customer;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+    }
+
+    private static CreateCustomerPayload BuildCustomerPayload(
+        CheckoutRequest request,
+        CustomerDto? existingCustomer)
+    {
+        return new CreateCustomerPayload
+        {
+            Name = request.CustomerName,
+            Description = request.Notes,
+            Cpf = request.Cpf,
+            PhoneNumber = request.PhoneNumber,
+            EmailAddress = request.Email,
+            Street = request.Street,
+            Number = request.Number,
+            Neighborhood = request.Neighborhood,
+            Complement = request.Complement,
+            City = request.City,
+            State = request.State,
+            PostalCode = request.PostCode,
+            Country = "Brasil",
+            Website = existingCustomer?.Website,
+            Instagram = existingCustomer?.Instagram,
+            TwitterX = existingCustomer?.TwitterX,
+            TikTok = existingCustomer?.TikTok,
+            CustomerStatus = string.IsNullOrWhiteSpace(existingCustomer?.CustomerStatus)
+                ? "Active"
+                : existingCustomer.CustomerStatus
+        };
     }
 
     private async Task<T> GetWrappedAsync<T>(string path, CancellationToken cancellationToken)
@@ -503,11 +569,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     private sealed record CustomerDto
     {
         public string? Id { get; init; }
+        public string? Website { get; init; }
+        public string? Instagram { get; init; }
+        public string? TwitterX { get; init; }
+        public string? TikTok { get; init; }
+        public string? CustomerStatus { get; init; }
     }
 
     private sealed record CreateCustomerPayload
     {
+        public string? Id { get; init; }
         public string? Name { get; init; }
+        public string? Description { get; init; }
+        public string? Cpf { get; init; }
         public string? PhoneNumber { get; init; }
         public string? EmailAddress { get; init; }
         public string? Password { get; init; }
@@ -520,6 +594,10 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public string? State { get; init; }
         public string? PostalCode { get; init; }
         public string? Country { get; init; }
+        public string? Website { get; init; }
+        public string? Instagram { get; init; }
+        public string? TwitterX { get; init; }
+        public string? TikTok { get; init; }
         public string? CustomerStatus { get; init; }
     }
 

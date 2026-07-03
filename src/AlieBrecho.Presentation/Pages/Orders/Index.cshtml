@@ -1,0 +1,18 @@
+@page
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@{
+    ViewData["Title"] = "Meus pedidos";
+}
+
+<section class="account-shell">
+    <div class="account-page-header">
+        <span class="eyebrow">Meus pedidos</span>
+        <h1>Pedidos em <em>andamento</em></h1>
+    </div>
+
+    <div class="account-panel">
+        <p class="account-empty">Quando voce finalizar uma compra, seus pedidos ficarao disponiveis aqui.</p>
+        <a class="button" asp-page="/Index" asp-fragment="pecas">Continuar comprando</a>
+    </div>
+</section>

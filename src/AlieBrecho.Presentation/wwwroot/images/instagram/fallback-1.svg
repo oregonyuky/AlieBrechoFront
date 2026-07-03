@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f2ede4"/>
+      <stop offset="1" stop-color="#e8c4b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" fill="url(#bg)"/>
+  <circle cx="690" cy="190" r="150" fill="#8a9e8c" opacity=".28"/>
+  <path d="M270 180c-54 86-76 178-67 276 12 126 80 223 203 291 118-76 180-178 185-305 4-96-25-184-86-263-74 51-156 52-235 1Z" fill="#c4786a"/>
+  <path d="M322 245c56 32 111 32 165 0 28 59 40 120 35 183-7 89-47 159-119 211-75-50-117-119-127-207-7-65 9-128 46-187Z" fill="#faf7f2" opacity=".82"/>
+  <text x="450" y="806" text-anchor="middle" fill="#2a1f1e" font-family="Georgia,serif" font-size="64" font-style="italic">Alie Brecho</text>
+</svg>
