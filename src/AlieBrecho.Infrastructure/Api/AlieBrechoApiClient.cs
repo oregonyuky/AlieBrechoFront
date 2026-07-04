@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AlieBrecho.Application.Abstractions;
@@ -95,7 +96,11 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
 
     public async Task<IReadOnlyList<Product>> GetProductsAsync(CancellationToken cancellationToken)
     {
-        var response = await GetWrappedAsync<List<ProductDto>>(_options.ProductsPath, cancellationToken);
+        var response = await GetCatalogListAsync<ProductDto>(
+            _options.ProductsPath,
+            [_options.PublicProductsPath, "products"],
+            cancellationToken);
+
         return response.Select(MapProduct).ToList();
     }
 
@@ -146,7 +151,11 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     {
         try
         {
-            var response = await GetWrappedAsync<List<CategoryDto>>(_options.CategoriesPath, cancellationToken);
+            var response = await GetCatalogListAsync<CategoryDto>(
+                _options.CategoriesPath,
+                [_options.PublicCategoriesPath, "categories"],
+                cancellationToken);
+
             return response.Select(category => new Category(
                 category.Id,
                 category.Name ?? string.Empty,
@@ -311,10 +320,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         };
     }
 
-    private async Task<T> GetWrappedAsync<T>(string path, CancellationToken cancellationToken)
+    private async Task<T> GetWrappedAsync<T>(
+        string path,
+        CancellationToken cancellationToken,
+        bool skipAuthorization = false)
         where T : class
     {
-        using var response = await httpClient.GetAsync(path, cancellationToken);
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (skipAuthorization)
+        {
+            request.Options.Set(AlieBrechoApiAuthorizationHandler.SkipAuthorizationOption, true);
+        }
+
+        using var response = await httpClient.SendAsync(request, cancellationToken);
         await EnsureSuccessAsync(response, cancellationToken);
 
         var result = await ReadWrappedAsync<T>(response, cancellationToken);
@@ -349,6 +367,45 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return direct is null
             ? new ApiResponse<T>(default)
             : new ApiResponse<T>(direct);
+    }
+
+    private async Task<IReadOnlyList<T>> GetCatalogListAsync<T>(
+        string primaryPath,
+        IReadOnlyList<string> publicPaths,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        try
+        {
+            return await GetWrappedAsync<List<T>>(primaryPath, cancellationToken);
+        }
+        catch (HttpRequestException primaryException)
+        {
+            foreach (var publicPath in GetDistinctPublicPaths(primaryPath, publicPaths))
+            {
+                try
+                {
+                    return await GetWrappedAsync<List<T>>(publicPath, cancellationToken, skipAuthorization: true);
+                }
+                catch (HttpRequestException)
+                {
+                }
+            }
+
+            ExceptionDispatchInfo.Capture(primaryException).Throw();
+            throw;
+        }
+    }
+
+    private static IReadOnlyList<string> GetDistinctPublicPaths(
+        string primaryPath,
+        IReadOnlyList<string> publicPaths)
+    {
+        return publicPaths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Where(path => !string.Equals(primaryPath, path, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static async Task EnsureSuccessAsync(

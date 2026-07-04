@@ -8,7 +8,17 @@ public sealed class CartService(ICartStore cartStore, IProductCatalogGateway pro
     public async Task<AlieBrecho.Domain.Orders.Cart> GetCartAsync(CancellationToken cancellationToken)
     {
         var items = await cartStore.GetItemsAsync(cancellationToken);
-        var products = await productCatalogGateway.GetProductsAsync(cancellationToken);
+        IReadOnlyList<Domain.Products.Product> products;
+
+        try
+        {
+            products = await productCatalogGateway.GetProductsAsync(cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return new AlieBrecho.Domain.Orders.Cart([]);
+        }
+
         var cartItems = products
             .Where(product => product.Id is not null && items.ContainsKey(product.Id))
             .Select(product => new CartItem(product, 1))

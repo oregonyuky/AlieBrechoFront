@@ -19,6 +19,10 @@ builder.Logging.AddConsole();
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");
+    options.Conventions.AllowAnonymousToPage("/Index");
+    options.Conventions.AllowAnonymousToPage("/Privacy");
+    options.Conventions.AllowAnonymousToFolder("/Products");
+    options.Conventions.AllowAnonymousToFolder("/Cart");
     options.Conventions.AllowAnonymousToPage("/Account/Login");
     options.Conventions.AllowAnonymousToPage("/Account/Register");
     options.Conventions.AllowAnonymousToPage("/Error");
