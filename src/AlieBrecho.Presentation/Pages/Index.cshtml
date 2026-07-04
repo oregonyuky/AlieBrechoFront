@@ -181,6 +181,40 @@
         </div>
     </section>
 
+    <!-- COMO FUNCIONA -->
+    <section class="section" id="instrucao">
+        <div class="reveal" style="text-align:center;max-width:500px;margin:0 auto">
+            <span class="section__eyebrow">&#10022; Simples assim</span>
+            <h2 class="section__title">Como <em>funciona</em></h2>
+        </div>
+        <div class="steps">
+            <div class="step reveal d1">
+                <div class="step__num">1</div>
+                <span class="step__icon">&#128269;</span>
+                <div class="step__title">Explore</div>
+                <p class="step__desc">Navegue pelas pecas com curadoria especial, filtradas por categoria, tamanho e estilo.</p>
+            </div>
+            <div class="step reveal d2">
+                <div class="step__num">2</div>
+                <span class="step__icon">&#128155;</span>
+                <div class="step__title">Escolha</div>
+                <p class="step__desc">Salve suas favoritas ou adicione direto ao carrinho. Cada peca e unica!</p>
+            </div>
+            <div class="step reveal d3">
+                <div class="step__num">3</div>
+                <span class="step__icon">&#128230;</span>
+                <div class="step__title">Receba</div>
+                <p class="step__desc">Enviamos com embalagem especial e carta personalizada da Alie para voce.</p>
+            </div>
+            <div class="step reveal d4">
+                <div class="step__num">4</div>
+                <span class="step__icon">&#10024;</span>
+                <div class="step__title">Arrase</div>
+                <p class="step__desc">Vista com amor e compartilhe seu look! Cada peca tem uma historia que agora e sua.</p>
+            </div>
+        </div>
+    </section>
+
     <section class="drop-banner reveal" id="drop" data-drop-endpoint="/api/drop-config/active">
         <div class="drop-banner__left">
             <p class="drop-banner__eyebrow">Lancamento exclusivo</p>
@@ -222,7 +256,7 @@
         </div>
     </section>
 
-    <section class="insta-section" aria-label="Instagram Alie Brecho">
+    <section class="insta-section" id="instagram" aria-label="Instagram Alie Brecho">
         <div class="insta-grid" id="instagramGrid" data-instagram-endpoint="/api/instagram/latest">
             @for (var index = 1; index <= 6; index++)
             {
