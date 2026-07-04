@@ -1793,16 +1793,16 @@ button.button {
 }
 
 .newsletter::before {
-  color: var(--blush);
-  content: "Alie";
-  font-family: var(--font-serif);
-  font-size: 220px;
-  opacity: 0.035;
-  pointer-events: none;
+  content: "✿ ✦ ✿";
   position: absolute;
-  right: 60px;
+  font-size: 200px;
+  opacity: 0.03;
+  color: var(--blush);
   top: 50%;
+  right: 60px;
   transform: translateY(-50%);
+  letter-spacing: 20px;
+  pointer-events: none;
 }
 
 .newsletter__left {
