@@ -488,16 +488,8 @@ function initCheckoutDynamics() {
 
   function recalcTotal() {
     const total = Math.max(0, basePrice + fretePrice - cupomDiscount);
-    const pixValue = total * 0.97;
-
     if (byId("val-total")) {
       byId("val-total").textContent = money(total);
-    }
-    if (byId("pixSummary")) {
-      byId("pixSummary").textContent = money(pixValue);
-    }
-    if (byId("pixPrice")) {
-      byId("pixPrice").textContent = money(pixValue);
     }
   }
 
@@ -719,6 +711,32 @@ function initCheckoutDynamics() {
     }
   }
 
+  function getPaymentMethodLabel(method) {
+    return method === "credit_card" ? "Cartao de Credito" : "Pix";
+  }
+
+  function selectPaymentMethod(method) {
+    const normalized = method === "credit_card" ? "credit_card" : "pix";
+    const input = byId("paymentMethod");
+    if (input) {
+      input.value = normalized;
+    }
+
+    document.querySelectorAll(".payment-method-card").forEach((card) => {
+      card.classList.toggle("selected", card.dataset.paymentMethod === normalized);
+    });
+
+    const summary = byId("sum-4");
+    if (summary) {
+      summary.textContent = getPaymentMethodLabel(normalized);
+    }
+  }
+
+  function hasValidPaymentMethod() {
+    const method = val("paymentMethod");
+    return method === "pix" || method === "credit_card";
+  }
+
   function confirmStep(step) {
     if (step === 1) {
       return confirmEmail();
@@ -742,6 +760,15 @@ function initCheckoutDynamics() {
 
   byId("btnCep")?.addEventListener("click", buscarCep);
   byId("btnCupom")?.addEventListener("click", aplicarCupom);
+
+  byId("paymentMethods")?.addEventListener("click", (event) => {
+    const option = event.target.closest(".payment-method-card");
+    if (!option) {
+      return;
+    }
+
+    selectPaymentMethod(option.dataset.paymentMethod);
+  });
 
   byId("deliveryOpts")?.addEventListener("click", (event) => {
     const option = event.target.closest(".delivery-opt");
@@ -778,32 +805,121 @@ function initCheckoutDynamics() {
     });
   });
 
-  form.addEventListener("submit", (event) => {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
     if (currentStep < 4) {
-      event.preventDefault();
       confirmStep(currentStep);
       return;
     }
 
     const valid = confirmEmail() && confirmDados() && confirmEntrega();
     if (!valid) {
-      event.preventDefault();
       return;
     }
 
-    doneStep(4, "Pedido enviado para confirmacao");
+    if (!hasValidPaymentMethod()) {
+      showToast("Escolha Pix ou Cartao de Credito.");
+      return;
+    }
+
+    doneStep(4, "Redirecionando para pagamento");
     const button = byId("btnFinalizar");
     if (button) {
       button.textContent = "Processando...";
       button.disabled = true;
     }
+
+    try {
+      const response = await fetch(form.action || window.location.href, {
+        method: "POST",
+        body: new FormData(form),
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
+      });
+
+      const data = await response.json().catch(() => ({}));
+      const hasPixData = Boolean(data.pixQrCode || data.pixCode);
+      if (!response.ok || (!data.paymentUrl && !hasPixData)) {
+        throw new Error(data.message || "Nao foi possivel iniciar o pagamento.");
+      }
+
+      if (data.orderId) {
+        sessionStorage.setItem("aliebrecho:lastOrderId", data.orderId);
+      }
+
+      if (data.orderId && (data.pixQrCode || data.pixCode)) {
+        sessionStorage.setItem(`aliebrecho:pix:${data.orderId}`, JSON.stringify({
+          pixQrCode: data.pixQrCode || "",
+          pixCode: data.pixCode || ""
+        }));
+        window.location.href = `/Payment/Pix/${encodeURIComponent(data.orderId)}`;
+        return;
+      }
+
+      window.location.href = data.paymentUrl;
+    } catch (error) {
+      showToast(error.message || "Nao foi possivel iniciar o pagamento.");
+      if (button) {
+        button.textContent = "Pagar";
+        button.disabled = false;
+      }
+    }
   });
 
   setProgress(1);
+  selectPaymentMethod(val("paymentMethod") || "pix");
   recalcTotal();
 }
 
 initCheckoutDynamics();
+
+function initPixPaymentPage() {
+  const shell = document.querySelector(".pix-payment-shell");
+  if (!shell) {
+    return;
+  }
+
+  const orderId = shell.dataset.orderId;
+  const help = document.getElementById("pixPaymentHelp");
+  const copyCode = document.getElementById("pixCopyCode");
+  const qrImage = document.getElementById("pixQrImage");
+  const qrText = document.getElementById("pixQrText");
+  const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
+
+  if (!raw) {
+    if (help) {
+      help.textContent = "Nao encontramos os dados Pix desta sessao. Volte ao checkout para gerar o pagamento novamente.";
+    }
+    return;
+  }
+
+  const data = JSON.parse(raw);
+  const pixCode = data.pixCode || data.pixQrCode || "";
+  if (copyCode) {
+    copyCode.value = pixCode;
+  }
+
+  if (data.pixQrCode && /^(data:image\/|https?:\/\/)/i.test(data.pixQrCode) && qrImage) {
+    qrImage.src = data.pixQrCode;
+    qrImage.hidden = false;
+  } else if (data.pixQrCode && qrText) {
+    qrText.textContent = data.pixQrCode;
+    qrText.hidden = false;
+  }
+
+  document.getElementById("copyPixCode")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(copyCode?.value || "");
+      showToast("Codigo Pix copiado.");
+    } catch {
+      showToast("Nao foi possivel copiar o codigo Pix.");
+    }
+  });
+}
+
+initPixPaymentPage();
 
 async function initInstagramFeed() {
   const grid = document.getElementById("instagramGrid");

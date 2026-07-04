@@ -222,6 +222,32 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return result?.Data?.Id;
     }
 
+    public async Task<PaymentCheckoutResult> CreateInfinitePayCheckoutAsync(
+        string orderId,
+        string paymentMethod,
+        CancellationToken cancellationToken)
+    {
+        var payload = new InfinitePayCheckoutPayload
+        {
+            OrderId = orderId,
+            PaymentMethod = paymentMethod
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.InfinitePayCheckoutPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<InfinitePayCheckoutDto>(response, cancellationToken);
+        return new PaymentCheckoutResult(
+            result?.Data?.PaymentUrl,
+            result?.Data?.PixQrCode,
+            result?.Data?.PixCode);
+    }
+
     private async Task<string?> SaveCustomerFromCheckoutAsync(
         CheckoutRequest request,
         CancellationToken cancellationToken)
@@ -656,6 +682,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     private sealed record OrderDto
     {
         public string? Id { get; init; }
+    }
+
+    private sealed record InfinitePayCheckoutPayload
+    {
+        public string? OrderId { get; init; }
+        public string? PaymentMethod { get; init; }
+    }
+
+    private sealed record InfinitePayCheckoutDto
+    {
+        public string? PaymentUrl { get; init; }
+        public string? PixQrCode { get; init; }
+        public string? PixCode { get; init; }
     }
 
     private sealed record CustomerDto

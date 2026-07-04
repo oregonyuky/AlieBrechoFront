@@ -35,6 +35,11 @@ public class IndexModel(CheckoutService checkoutService, CartService cartService
 
         if (!ModelState.IsValid)
         {
+            if (IsAjaxRequest())
+            {
+                return BadRequest(new { message = "Confira os dados do checkout." });
+            }
+
             return Page();
         }
 
@@ -46,17 +51,50 @@ public class IndexModel(CheckoutService checkoutService, CartService cartService
             {
                 ErrorMessage = result.ErrorMessage;
                 Cart = await cartService.GetCartAsync(cancellationToken);
+                if (IsAjaxRequest())
+                {
+                    return BadRequest(new { message = ErrorMessage });
+                }
+
                 return Page();
             }
 
-            return RedirectToPage("/Checkout/Success", new { orderId = result.OrderId });
+            if (IsAjaxRequest())
+            {
+                return new JsonResult(new
+                {
+                    orderId = result.OrderId,
+                    paymentUrl = result.PaymentUrl,
+                    pixQrCode = result.PixQrCode,
+                    pixCode = result.PixCode
+                });
+            }
+
+            return string.IsNullOrWhiteSpace(result.PaymentUrl)
+                ? RedirectToPage("/Payment/Pix", new { orderId = result.OrderId })
+                : Redirect(result.PaymentUrl);
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            ErrorMessage = "Nao foi possivel criar o pedido na API. Confira a conexao e os caminhos dos endpoints.";
+            ErrorMessage = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Nao foi possivel criar o pedido na API. Confira a conexao e os caminhos dos endpoints."
+                : ex.Message;
             Cart = await cartService.GetCartAsync(cancellationToken);
+            if (IsAjaxRequest())
+            {
+                return BadRequest(new { message = ErrorMessage });
+            }
+
             return Page();
         }
+    }
+
+    private bool IsAjaxRequest()
+    {
+        return string.Equals(
+            Request.Headers.XRequestedWith,
+            "XMLHttpRequest",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private string? GetAuthenticatedCustomerId()

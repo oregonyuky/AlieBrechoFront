@@ -1,0 +1,30 @@
+@page "{orderId}"
+@model AlieBrecho.Presentation.Pages.Payment.PixModel
+@{
+    ViewData["Title"] = "Pagamento Pix";
+}
+
+<section class="pix-payment-shell" data-order-id="@Model.OrderId">
+    <div class="pix-payment-panel">
+        <p class="eyebrow">Pagamento Pix</p>
+        <h1>Finalize seu pagamento</h1>
+        <p class="pix-payment-text">Use o QR Code ou copie o codigo Pix abaixo.</p>
+
+        <div class="pix-payment-qr" id="pixQrBox">
+            <img id="pixQrImage" alt="QR Code Pix" hidden />
+            <pre id="pixQrText" hidden></pre>
+        </div>
+
+        <label class="field full">
+            Codigo Pix copia e cola
+            <textarea id="pixCopyCode" rows="5" readonly></textarea>
+        </label>
+
+        <div class="pix-payment-actions">
+            <button class="btn-confirm" id="copyPixCode" type="button">Copiar codigo Pix</button>
+            <a class="btn-confirm btn-confirm-secondary" asp-page="/Orders/Index">Ja paguei</a>
+        </div>
+
+        <p class="pix-payment-help" id="pixPaymentHelp"></p>
+    </div>
+</section>

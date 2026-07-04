@@ -8,4 +8,14 @@ public interface IOrderGateway
         CheckoutRequest request,
         AlieBrecho.Domain.Orders.Cart cart,
         CancellationToken cancellationToken);
+
+    Task<PaymentCheckoutResult> CreateInfinitePayCheckoutAsync(
+        string orderId,
+        string paymentMethod,
+        CancellationToken cancellationToken);
 }
+
+public sealed record PaymentCheckoutResult(
+    string? PaymentUrl,
+    string? PixQrCode,
+    string? PixCode);

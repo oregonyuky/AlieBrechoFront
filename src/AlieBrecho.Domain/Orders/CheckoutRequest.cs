@@ -18,5 +18,6 @@ public sealed record CheckoutRequest
     public string City { get; init; } = string.Empty;
     public string State { get; init; } = string.Empty;
     public string PostCode { get; init; } = string.Empty;
+    public string PaymentMethod { get; init; } = "pix";
     public string? Notes { get; init; }
 }
