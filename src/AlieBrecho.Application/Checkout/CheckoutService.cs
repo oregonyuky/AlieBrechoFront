@@ -16,7 +16,7 @@ public sealed class CheckoutService(CartService cartService, IOrderGateway order
 
         if (!IsValidPaymentMethod(request.PaymentMethod))
         {
-            return CheckoutResult.Failed("Escolha Pix ou Cartao de Credito.");
+            return CheckoutResult.Failed("Escolha Pix.");
         }
 
         var orderId = await orderGateway.CreateOrderAsync(request, cart, cancellationToken);
@@ -25,25 +25,24 @@ public sealed class CheckoutService(CartService cartService, IOrderGateway order
             return CheckoutResult.Failed("A API nao retornou o numero do pedido.");
         }
 
-        var payment = await orderGateway.CreateInfinitePayCheckoutAsync(
+        var payment = await orderGateway.CreateMercadoPagoPixPaymentAsync(
             orderId,
-            request.PaymentMethod,
+            request,
             cancellationToken);
         if (string.IsNullOrWhiteSpace(payment.PaymentUrl) &&
             string.IsNullOrWhiteSpace(payment.PixQrCode) &&
             string.IsNullOrWhiteSpace(payment.PixCode))
         {
-            return CheckoutResult.Failed("A API nao retornou URL de pagamento nem dados Pix.");
+            return CheckoutResult.Failed("A API nao retornou dados Pix.");
         }
 
         await cartService.ClearAsync(cancellationToken);
 
-        return CheckoutResult.Succeeded(orderId, payment.PaymentUrl, payment.PixQrCode, payment.PixCode);
+        return CheckoutResult.Succeeded(orderId, payment.PaymentUrl, payment.PixQrCode, payment.PixCode, payment.PaymentId);
     }
 
     private static bool IsValidPaymentMethod(string? paymentMethod)
     {
-        return string.Equals(paymentMethod, "pix", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(paymentMethod, "credit_card", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(paymentMethod, "pix", StringComparison.OrdinalIgnoreCase);
     }
 }

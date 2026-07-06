@@ -712,11 +712,11 @@ function initCheckoutDynamics() {
   }
 
   function getPaymentMethodLabel(method) {
-    return method === "credit_card" ? "Cartao de Credito" : "Pix";
+    return "Pix";
   }
 
   function selectPaymentMethod(method) {
-    const normalized = method === "credit_card" ? "credit_card" : "pix";
+    const normalized = "pix";
     const input = byId("paymentMethod");
     if (input) {
       input.value = normalized;
@@ -734,7 +734,7 @@ function initCheckoutDynamics() {
 
   function hasValidPaymentMethod() {
     const method = val("paymentMethod");
-    return method === "pix" || method === "credit_card";
+    return method === "pix";
   }
 
   function confirmStep(step) {
@@ -819,7 +819,7 @@ function initCheckoutDynamics() {
     }
 
     if (!hasValidPaymentMethod()) {
-      showToast("Escolha Pix ou Cartao de Credito.");
+      showToast("Escolha Pix.");
       return;
     }
 
@@ -852,7 +852,8 @@ function initCheckoutDynamics() {
       if (data.orderId && (data.pixQrCode || data.pixCode)) {
         sessionStorage.setItem(`aliebrecho:pix:${data.orderId}`, JSON.stringify({
           pixQrCode: data.pixQrCode || "",
-          pixCode: data.pixCode || ""
+          pixCode: data.pixCode || "",
+          paymentId: data.paymentId || ""
         }));
         window.location.href = `/Payment/Pix/${encodeURIComponent(data.orderId)}`;
         return;
@@ -887,6 +888,7 @@ function initPixPaymentPage() {
   const qrImage = document.getElementById("pixQrImage");
   const qrText = document.getElementById("pixQrText");
   const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
+  let pollTimer = null;
 
   if (!raw) {
     if (help) {
@@ -909,6 +911,86 @@ function initPixPaymentPage() {
     qrText.hidden = false;
   }
 
+  const stopPolling = () => {
+    if (pollTimer) {
+      window.clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  };
+
+  const isApproved = (status) => {
+    return String(status || "").toLowerCase() === "approved" ||
+      String(status || "").toLowerCase() === "paid";
+  };
+
+  const navigateSoft = async (url) => {
+    try {
+      const response = await fetch(url, {
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+      });
+      if (!response.ok) {
+        throw new Error("Nao foi possivel carregar a pagina.");
+      }
+
+      const html = await response.text();
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const nextMain = doc.querySelector("main");
+      const currentMain = document.querySelector("main");
+      if (!nextMain || !currentMain) {
+        throw new Error("Pagina invalida.");
+      }
+
+      document.title = doc.title || document.title;
+      currentMain.replaceWith(nextMain);
+      history.pushState({}, "", url);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      window.location.href = url;
+    }
+  };
+
+  const checkPaymentStatus = async () => {
+    if (!data.paymentId) {
+      if (help) {
+        help.textContent = "Pagamento gerado. Quando confirmar o Pix, acompanhe seu pedido pela sua conta.";
+      }
+      stopPolling();
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/Payment/Pix/${encodeURIComponent(orderId)}?handler=Status&paymentId=${encodeURIComponent(data.paymentId)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      const statusData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(statusData.message || "Nao foi possivel consultar o pagamento.");
+      }
+
+      if (isApproved(statusData.status) || isApproved(statusData.orderStatus)) {
+        stopPolling();
+        sessionStorage.removeItem(`aliebrecho:pix:${orderId}`);
+        if (help) {
+          help.textContent = "Pagamento confirmado. Redirecionando...";
+        }
+        await navigateSoft(`/obrigado?pedido=${encodeURIComponent(orderId)}`);
+        return;
+      }
+
+      if (help) {
+        help.textContent = "Aguardando confirmacao do pagamento Pix...";
+      }
+    } catch (error) {
+      if (help) {
+        help.textContent = error.message || "Nao foi possivel consultar o pagamento agora.";
+      }
+    }
+  };
+
+  checkPaymentStatus();
+  pollTimer = window.setInterval(checkPaymentStatus, 5000);
+
   document.getElementById("copyPixCode")?.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(copyCode?.value || "");
@@ -917,6 +999,8 @@ function initPixPaymentPage() {
       showToast("Nao foi possivel copiar o codigo Pix.");
     }
   });
+
+  window.addEventListener("beforeunload", stopPolling, { once: true });
 }
 
 initPixPaymentPage();

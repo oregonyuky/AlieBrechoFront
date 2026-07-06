@@ -2509,6 +2509,83 @@ textarea {
   text-align: center;
 }
 
+.thanks-shell {
+  display: grid;
+  margin: 0 auto;
+  max-width: 860px;
+  min-height: calc(100vh - 180px);
+  padding: 180px 28px 72px;
+  place-content: center;
+  width: 100%;
+}
+
+.thanks-panel {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  display: grid;
+  gap: 22px;
+  padding: clamp(26px, 5vw, 46px);
+  text-align: center;
+}
+
+.thanks-panel h1 {
+  color: var(--dark);
+  font-family: var(--font-serif);
+  font-size: clamp(44px, 7vw, 78px);
+  font-weight: 300;
+  line-height: 0.95;
+}
+
+.thanks-text {
+  color: var(--warm-gray);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 auto;
+  max-width: 560px;
+}
+
+.thanks-summary {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-top: 22px;
+  text-align: left;
+}
+
+.thanks-summary div {
+  background: var(--parchment);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.thanks-summary span {
+  color: var(--warm-gray);
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.thanks-summary strong {
+  color: var(--dark);
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.thanks-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
 .check-label {
   align-items: center;
   color: var(--dark);
@@ -3454,7 +3531,8 @@ textarea {
   .about,
   .product-detail,
   .product-bottom__inner,
-  .checkout-layout {
+  .checkout-layout,
+  .thanks-summary {
     grid-template-columns: 1fr;
   }
 
@@ -3672,6 +3750,20 @@ textarea {
 
   .auth-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .thanks-shell {
+    padding: 130px 20px 56px;
+  }
+
+  .thanks-panel {
+    border-radius: 14px;
+    padding: 24px 18px;
+  }
+
+  .thanks-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .steps {

@@ -1,0 +1,50 @@
+@page "/obrigado"
+@model AlieBrecho.Presentation.Pages.ObrigadoModel
+@{
+    ViewData["Title"] = "Obrigado";
+    var totalPago = Model.Order?.AmountPaid ?? Model.Order?.TotalAmount;
+}
+
+<section class="thanks-shell">
+    <div class="thanks-panel">
+        @if (Model.Order is null)
+        {
+            <p class="eyebrow">Pedido nao encontrado</p>
+            <h1>Nao encontramos esse pedido</h1>
+            <p class="thanks-text">Confira o link ou volte para a loja para continuar navegando.</p>
+            <div class="thanks-actions">
+                <a class="btn-confirm" asp-page="/Index" asp-fragment="pecas">Voltar para a loja</a>
+            </div>
+        }
+        else
+        {
+            <p class="eyebrow">Pagamento confirmado</p>
+            <h1>Obrigado pela sua compra!</h1>
+            <p class="thanks-text">Seu pedido foi confirmado e ja esta registrado para acompanhamento.</p>
+
+            <div class="thanks-summary" aria-label="Resumo do pedido">
+                <div>
+                    <span>Pedido</span>
+                    <strong>@Model.Order.OrderId</strong>
+                </div>
+                <div>
+                    <span>Valor pago</span>
+                    <strong>@((totalPago ?? 0m).ToString("C"))</strong>
+                </div>
+                <div>
+                    <span>Forma de pagamento</span>
+                    <strong>@Model.Order.PaymentMethod</strong>
+                </div>
+                <div>
+                    <span>Status</span>
+                    <strong>@Model.Order.Status</strong>
+                </div>
+            </div>
+
+            <div class="thanks-actions">
+                <a class="btn-confirm" asp-page="/Index" asp-fragment="pecas">Voltar para a loja</a>
+                <a class="btn-confirm btn-confirm-secondary" asp-page="/Orders/Index">Acompanhar pedido</a>
+            </div>
+        }
+    </div>
+</section>

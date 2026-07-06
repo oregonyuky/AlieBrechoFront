@@ -222,30 +222,93 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return result?.Data?.Id;
     }
 
-    public async Task<PaymentCheckoutResult> CreateInfinitePayCheckoutAsync(
+    public async Task<PaymentCheckoutResult> CreateMercadoPagoPixPaymentAsync(
         string orderId,
-        string paymentMethod,
+        CheckoutRequest request,
         CancellationToken cancellationToken)
     {
-        var payload = new InfinitePayCheckoutPayload
+        var payload = new MercadoPagoPixPaymentPayload
         {
             OrderId = orderId,
-            PaymentMethod = paymentMethod
+            Description = $"Pedido {orderId}",
+            PayerFirstName = request.FirstName,
+            PayerLastName = request.LastName,
+            PayerEmail = request.Email,
+            PayerCpf = request.Cpf
         };
 
         using var response = await httpClient.PostAsJsonAsync(
-            _options.InfinitePayCheckoutPath,
+            _options.MercadoPagoPixPaymentPath,
             payload,
             JsonOptions,
             cancellationToken);
 
         await EnsureSuccessAsync(response, cancellationToken);
 
-        var result = await ReadWrappedAsync<InfinitePayCheckoutDto>(response, cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        var result = ReadMercadoPagoPixPayment(content);
+        var qrImage = string.IsNullOrWhiteSpace(result.QrCodeBase64)
+            ? null
+            : $"data:image/png;base64,{result.QrCodeBase64}";
+
+        if (string.IsNullOrWhiteSpace(qrImage) && string.IsNullOrWhiteSpace(result.QrCode))
+        {
+            var details = string.Join(
+                " ",
+                new[]
+                {
+                    string.IsNullOrWhiteSpace(result.PaymentId) ? null : $"Pagamento: {result.PaymentId}.",
+                    string.IsNullOrWhiteSpace(result.Status) ? null : $"Status: {result.Status}."
+                }.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+            throw new HttpRequestException(string.IsNullOrWhiteSpace(details)
+                ? "Mercado Pago nao retornou QR Code nem codigo Pix."
+                : $"Mercado Pago nao retornou QR Code nem codigo Pix. {details}");
+        }
+
         return new PaymentCheckoutResult(
-            result?.Data?.PaymentUrl,
-            result?.Data?.PixQrCode,
-            result?.Data?.PixCode);
+            null,
+            qrImage,
+            result.QrCode,
+            result.PaymentId);
+    }
+
+    public async Task<PixPaymentStatusResult?> GetMercadoPagoPixPaymentStatusAsync(
+        string paymentId,
+        CancellationToken cancellationToken)
+    {
+        var path = _options.MercadoPagoPixStatusPathTemplate
+            .Replace("{paymentId}", Uri.EscapeDataString(paymentId));
+
+        using var response = await httpClient.GetAsync(path, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<MercadoPagoPixStatusDto>(response, cancellationToken);
+        return result.Data is null
+            ? null
+            : new PixPaymentStatusResult(
+                result.Data.PaymentId,
+                result.Data.Status,
+                result.Data.StatusDetail,
+                result.Data.OrderStatus);
+    }
+
+    public async Task<OrderSummary?> GetOrderSummaryAsync(
+        string orderId,
+        CancellationToken cancellationToken)
+    {
+        var path = _options.OrderDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(orderId));
+
+        var order = await GetWrappedAsync<OrderSummaryDto>(path, cancellationToken);
+        return new OrderSummary(
+            order.Id,
+            order.Status,
+            order.TotalAmount,
+            order.ShippingCost,
+            order.Payment?.Amount,
+            string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
+                ? "Pix"
+                : order.Payment.PaymentDetail.PaymentMethod);
     }
 
     private async Task<string?> SaveCustomerFromCheckoutAsync(
@@ -393,6 +456,99 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         return direct is null
             ? new ApiResponse<T>(default)
             : new ApiResponse<T>(direct);
+    }
+
+    private static MercadoPagoPixPaymentDto ReadMercadoPagoPixPayment(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return new MercadoPagoPixPaymentDto();
+        }
+
+        using var document = JsonDocument.Parse(content);
+        var apiError = FindMessage(document.RootElement);
+        if (!string.IsNullOrWhiteSpace(apiError) &&
+            (document.RootElement.TryGetProperty("error", out _) ||
+                document.RootElement.TryGetProperty("Error", out _) ||
+                document.RootElement.TryGetProperty("code", out _) ||
+                document.RootElement.TryGetProperty("Code", out _)))
+        {
+            throw new HttpRequestException(apiError);
+        }
+
+        var payload = UnwrapPayload(document.RootElement);
+        var transactionData = GetObject(payload, "pointOfInteraction", "transactionData")
+            ?? GetObject(payload, "point_of_interaction", "transaction_data");
+
+        return new MercadoPagoPixPaymentDto
+        {
+            PaymentId = GetString(payload, "paymentId", "id"),
+            QrCodeBase64 = GetString(payload, "qrCodeBase64", "qr_code_base64")
+                ?? (transactionData is null ? null : GetString(transactionData.Value, "qrCodeBase64", "qr_code_base64")),
+            QrCode = GetString(payload, "qrCode", "qr_code")
+                ?? (transactionData is null ? null : GetString(transactionData.Value, "qrCode", "qr_code")),
+            Status = GetString(payload, "status")
+        };
+    }
+
+    private static JsonElement UnwrapPayload(JsonElement element)
+    {
+        var current = element;
+        while (current.ValueKind == JsonValueKind.Object)
+        {
+            if (current.TryGetProperty("content", out var content) ||
+                current.TryGetProperty("Content", out content) ||
+                current.TryGetProperty("data", out content) ||
+                current.TryGetProperty("Data", out content))
+            {
+                current = content;
+                continue;
+            }
+
+            break;
+        }
+
+        return current;
+    }
+
+    private static JsonElement? GetObject(JsonElement element, params string[] path)
+    {
+        var current = element;
+        foreach (var propertyName in path)
+        {
+            if (current.ValueKind != JsonValueKind.Object ||
+                !current.TryGetProperty(propertyName, out current))
+            {
+                return null;
+            }
+        }
+
+        return current.ValueKind == JsonValueKind.Object ? current : null;
+    }
+
+    private static string? GetString(JsonElement element, params string[] propertyNames)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var propertyName in propertyNames)
+        {
+            if (element.TryGetProperty(propertyName, out var property))
+            {
+                var value = property.ValueKind == JsonValueKind.String
+                    ? property.GetString()
+                    : property.ToString();
+
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
     }
 
     private async Task<IReadOnlyList<T>> GetCatalogListAsync<T>(
@@ -684,17 +840,50 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public string? Id { get; init; }
     }
 
-    private sealed record InfinitePayCheckoutPayload
+    private sealed record MercadoPagoPixPaymentPayload
     {
         public string? OrderId { get; init; }
-        public string? PaymentMethod { get; init; }
+        public string? Description { get; init; }
+        public string? PayerFirstName { get; init; }
+        public string? PayerLastName { get; init; }
+        public string? PayerEmail { get; init; }
+        public string? PayerCpf { get; init; }
     }
 
-    private sealed record InfinitePayCheckoutDto
+    private sealed record MercadoPagoPixPaymentDto
     {
-        public string? PaymentUrl { get; init; }
-        public string? PixQrCode { get; init; }
-        public string? PixCode { get; init; }
+        public string? PaymentId { get; init; }
+        public string? QrCodeBase64 { get; init; }
+        public string? QrCode { get; init; }
+        public string? Status { get; init; }
+    }
+
+    private sealed record MercadoPagoPixStatusDto
+    {
+        public string? PaymentId { get; init; }
+        public string? Status { get; init; }
+        public string? StatusDetail { get; init; }
+        public string? OrderStatus { get; init; }
+    }
+
+    private sealed record OrderSummaryDto
+    {
+        public string? Id { get; init; }
+        public string? Status { get; init; }
+        public decimal? TotalAmount { get; init; }
+        public decimal? ShippingCost { get; init; }
+        public OrderPaymentSummaryDto? Payment { get; init; }
+    }
+
+    private sealed record OrderPaymentSummaryDto
+    {
+        public decimal? Amount { get; init; }
+        public OrderPaymentDetailSummaryDto? PaymentDetail { get; init; }
+    }
+
+    private sealed record OrderPaymentDetailSummaryDto
+    {
+        public string? PaymentMethod { get; init; }
     }
 
     private sealed record CustomerDto

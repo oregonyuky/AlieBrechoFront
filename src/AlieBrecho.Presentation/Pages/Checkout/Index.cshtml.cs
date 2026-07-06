@@ -66,7 +66,8 @@ public class IndexModel(CheckoutService checkoutService, CartService cartService
                     orderId = result.OrderId,
                     paymentUrl = result.PaymentUrl,
                     pixQrCode = result.PixQrCode,
-                    pixCode = result.PixCode
+                    pixCode = result.PixCode,
+                    paymentId = result.PaymentId
                 });
             }
 
