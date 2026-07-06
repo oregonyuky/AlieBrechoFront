@@ -493,6 +493,79 @@ function initCheckoutDynamics() {
     }
   }
 
+  function maskCpf(value) {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (digits.length !== 11) {
+      return "***.***.***-**";
+    }
+
+    return `${digits.slice(0, 3)}.***.***-${digits.slice(9)}`;
+  }
+
+  function maskName(firstName, lastName) {
+    const parts = [firstName, lastName].map((part) => String(part || "").trim()).filter(Boolean);
+    return parts.map((part, index) => {
+      if (part.length <= 2) {
+        return `${part[0] || "*"}*`;
+      }
+      return index === 0 ? `${part[0]}${"*".repeat(Math.max(2, part.length - 1))}` : `${part[0]}***`;
+    }).join(" ");
+  }
+
+  function maskText(value) {
+    const text = String(value || "").trim();
+    if (!text) {
+      return "--";
+    }
+
+    if (text.length <= 3) {
+      return `${text[0]}**`;
+    }
+
+    return `${text.slice(0, 3)}***`;
+  }
+
+  function collectCheckoutSnapshot(orderId) {
+    const selectedDelivery = document.querySelector(".delivery-opt.selected");
+    const deliveryName = selectedDelivery?.querySelector(".delivery-opt__name")?.textContent?.trim() || "PAC";
+    const deliveryDeadline = selectedDelivery?.querySelector(".delivery-opt__prazo")?.textContent?.trim() || "Ate 5 dias uteis";
+    const deliveryPrice = byId("val-entrega")?.textContent?.trim() || "A calcular";
+    const items = Array.from(document.querySelectorAll(".checkout-cart-item")).map((item) => ({
+      name: item.querySelector(".checkout-cart-item__name")?.textContent?.trim() || "Produto",
+      variant: item.querySelector(".checkout-cart-item__variant")?.textContent?.trim() || "Tamanho unico",
+      price: item.querySelector(".checkout-cart-item__price")?.textContent?.trim() || "",
+      image: item.querySelector(".checkout-cart-item__img img")?.getAttribute("src") || "",
+      quantity: item.querySelector(".checkout-cart-item__badge")?.textContent?.trim() || "1"
+    }));
+
+    const snapshot = {
+      orderId,
+      generatedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      customer: {
+        name: maskName(val("nome"), val("sobrenome")),
+        cpf: maskCpf(val("cpf")),
+        email: val("email").trim()
+      },
+      delivery: {
+        address: `${maskText(val("rua"))}, ${maskText(val("numero"))}${val("complemento") ? `, ${maskText(val("complemento"))}` : ""} - ${maskText(val("bairro"))}, ${maskText(val("cidade"))}/${String(val("estado") || "").toUpperCase() || "**"} - CEP ${maskText(val("cep"))}`,
+        carrier: "Correios",
+        mode: deliveryName,
+        deadline: deliveryDeadline,
+        price: deliveryPrice
+      },
+      totals: {
+        subtotal: byId("val-subtotal")?.textContent?.trim() || money(basePrice),
+        discount: byId("val-desconto")?.textContent?.trim() || "- R$ 0,00",
+        shipping: deliveryPrice,
+        total: byId("val-total")?.textContent?.trim() || money(basePrice + fretePrice - cupomDiscount)
+      },
+      items
+    };
+
+    sessionStorage.setItem(`aliebrecho:order-confirm:${orderId}`, JSON.stringify(snapshot));
+  }
+
   function confirmEmail() {
     const email = val("email").trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -847,6 +920,7 @@ function initCheckoutDynamics() {
 
       if (data.orderId) {
         sessionStorage.setItem("aliebrecho:lastOrderId", data.orderId);
+        collectCheckoutSnapshot(data.orderId);
       }
 
       if (data.orderId && (data.pixQrCode || data.pixCode)) {
@@ -885,10 +959,88 @@ function initPixPaymentPage() {
   const orderId = shell.dataset.orderId;
   const help = document.getElementById("pixPaymentHelp");
   const copyCode = document.getElementById("pixCopyCode");
+  const copyPreview = document.getElementById("pixCopyPreview");
   const qrImage = document.getElementById("pixQrImage");
   const qrText = document.getElementById("pixQrText");
   const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
+  const snapshotRaw = orderId ? sessionStorage.getItem(`aliebrecho:order-confirm:${orderId}`) : null;
   let pollTimer = null;
+
+  const moneyFallback = "--";
+  const formatDateTime = (value) => {
+    const date = value ? new Date(value) : new Date(Date.now() + 30 * 60 * 1000);
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value || "--";
+    }
+  };
+
+  const truncateMiddle = (value, start = 28, end = 18) => {
+    const text = String(value || "");
+    if (text.length <= start + end + 3) {
+      return text || "--";
+    }
+
+    return `${text.slice(0, start)}...${text.slice(-end)}`;
+  };
+
+  const escapeHtml = (value) => String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+  const renderSnapshot = () => {
+    const snapshot = snapshotRaw ? JSON.parse(snapshotRaw) : null;
+    const totals = snapshot?.totals || {};
+    const delivery = snapshot?.delivery || {};
+    const customer = snapshot?.customer || {};
+
+    setText("pixTotalValue", totals.total || moneyFallback);
+    setText("pixExpiresAt", formatDateTime(snapshot?.expiresAt));
+    setText("pixCpf", customer.cpf || "***.***.***-**");
+    setText("pixEmail", customer.email || "--");
+    setText("pixCustomerName", customer.name || "--");
+    setText("pixAddress", delivery.address || "--");
+    setText("pixDeliveryEstimate", delivery.deadline || "--");
+    setText("pixSubtotal", totals.subtotal || moneyFallback);
+    setText("pixDiscount", totals.discount || "- R$ 0,00");
+    setText("pixShipping", totals.shipping || moneyFallback);
+    setText("pixSummaryTotal", totals.total || moneyFallback);
+    setText("pixShippingLabel", `Frete${delivery.carrier || delivery.mode ? ` (${[delivery.carrier, delivery.mode].filter(Boolean).join(" - ")})` : ""}`);
+
+    const list = document.getElementById("pixSummaryItems");
+    if (list && snapshot?.items?.length) {
+      list.innerHTML = snapshot.items.map((item) => `
+        <div class="checkout-cart-item">
+          <div class="checkout-cart-item__img">
+            ${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" />` : `<span>${escapeHtml(item.name)}</span>`}
+            <div class="checkout-cart-item__badge">${escapeHtml(item.quantity || "1")}</div>
+          </div>
+          <div class="checkout-cart-item__info">
+            <div class="checkout-cart-item__name">${escapeHtml(item.name)}</div>
+            <div class="checkout-cart-item__variant">${escapeHtml(item.variant)}</div>
+            <div class="checkout-cart-item__pricing">
+              <span class="checkout-cart-item__price">${escapeHtml(item.price || moneyFallback)}</span>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+  };
+
+  renderSnapshot();
 
   if (!raw) {
     if (help) {
@@ -901,6 +1053,10 @@ function initPixPaymentPage() {
   const pixCode = data.pixCode || data.pixQrCode || "";
   if (copyCode) {
     copyCode.value = pixCode;
+  }
+  if (copyPreview) {
+    copyPreview.textContent = truncateMiddle(pixCode);
+    copyPreview.title = pixCode;
   }
 
   if (data.pixQrCode && /^(data:image\/|https?:\/\/)/i.test(data.pixQrCode) && qrImage) {
@@ -998,6 +1154,11 @@ function initPixPaymentPage() {
     } catch {
       showToast("Nao foi possivel copiar o codigo Pix.");
     }
+  });
+
+  document.getElementById("refreshPixPage")?.addEventListener("click", () => {
+    checkPaymentStatus();
+    window.location.reload();
   });
 
   window.addEventListener("beforeunload", stopPolling, { once: true });

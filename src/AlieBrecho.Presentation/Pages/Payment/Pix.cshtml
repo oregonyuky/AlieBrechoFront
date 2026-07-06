@@ -5,26 +5,168 @@
 }
 
 <section class="pix-payment-shell" data-order-id="@Model.OrderId">
-    <div class="pix-payment-panel">
-        <p class="eyebrow">Pagamento Pix</p>
-        <h1>Finalize seu pagamento</h1>
-        <p class="pix-payment-text">Use o QR Code ou copie o codigo Pix abaixo.</p>
+    <div class="checkout-layout pix-confirmation-layout">
+        <div class="checkout-left pix-confirmation-main">
+            <div class="checkout-brand">
+                <a class="checkout-brand__logo" asp-page="/Index">Alie <em>Brecho</em></a>
+                <div class="checkout-brand__secure">Compra 100% segura</div>
+            </div>
 
-        <div class="pix-payment-qr" id="pixQrBox">
-            <img id="pixQrImage" alt="QR Code Pix" hidden />
-            <pre id="pixQrText" hidden></pre>
+            <div class="pix-confirmation-heading">
+                <p class="eyebrow">Confirmacao do pedido</p>
+                <h1 class="checkout-title">Recebemos seu <em>pedido!</em></h1>
+                <p class="pix-order-number">Numero do pedido: <strong>@Model.OrderId</strong></p>
+            </div>
+
+            <section class="checkout-step-card active pix-payment-card" aria-labelledby="pixPaymentTitle">
+                <div class="checkout-step-header">
+                    <div class="checkout-step-header__left">
+                        <div class="checkout-step-num">1</div>
+                        <div>
+                            <h2 class="checkout-step-label" id="pixPaymentTitle">Dados de pagamento</h2>
+                            <div class="checkout-step-summary">Pix a vista pelo Mercado Pago</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="checkout-step-body pix-payment-body">
+                    <div class="pix-payment-meta">
+                        <p>Forma de pagamento: <strong>Pix</strong></p>
+                        <p>Total a vista: <strong id="pixTotalValue">--</strong></p>
+                        <p>Prazo limite para pagamento: <strong id="pixExpiresAt">--</strong></p>
+                    </div>
+
+                    <div class="pix-alert" role="alert">
+                        <span class="pix-alert__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M12 8v5"></path>
+                                <path d="M12 17h.01"></path>
+                                <path d="M10.3 4.3 2.7 17.5A2 2 0 0 0 4.4 20h15.2a2 2 0 0 0 1.7-2.5L13.7 4.3a2 2 0 0 0-3.4 0Z"></path>
+                            </svg>
+                        </span>
+                        <span>Apos finalizar o pagamento, atualize esta pagina para consultar a confirmacao.</span>
+                    </div>
+
+                    <div class="pix-payment-qr" id="pixQrBox">
+                        <img id="pixQrImage" alt="QR Code Pix" hidden />
+                        <pre id="pixQrText" hidden></pre>
+                    </div>
+
+                    <button class="btn-confirm pix-refresh-btn" id="refreshPixPage" type="button">Atualizar pagina</button>
+                    <p class="pix-payment-help" id="pixPaymentHelp"></p>
+                </div>
+            </section>
+
+            <section class="checkout-step-card done pix-details-card" aria-labelledby="pixDetailsTitle">
+                <div class="checkout-step-header">
+                    <div class="checkout-step-header__left">
+                        <div class="checkout-step-num">2</div>
+                        <div>
+                            <h2 class="checkout-step-label" id="pixDetailsTitle">Dados do pedido</h2>
+                            <div class="checkout-step-summary">Chave Pix, dados pessoais e entrega</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pix-details-body">
+                    <div class="pix-copy-panel">
+                        <div class="pix-copy-panel__label">Chave do Pix</div>
+                        <div class="pix-copy-row">
+                            <code id="pixCopyPreview">--</code>
+                            <button class="btn-cep pix-copy-button" id="copyPixCode" type="button" aria-label="Copiar chave Pix">
+                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                    <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                                Copiar Chave
+                            </button>
+                        </div>
+                        <textarea id="pixCopyCode" readonly hidden></textarea>
+                    </div>
+
+                    <div class="pix-info-grid">
+                        <div class="pix-info-block">
+                            <h3>Dados pessoais</h3>
+                            <dl>
+                                <div>
+                                    <dt>CPF</dt>
+                                    <dd id="pixCpf">***.***.***-**</dd>
+                                </div>
+                                <div>
+                                    <dt>E-mail</dt>
+                                    <dd id="pixEmail">--</dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <div class="pix-info-block">
+                            <h3>Dados de entrega</h3>
+                            <dl>
+                                <div>
+                                    <dt>Nome</dt>
+                                    <dd id="pixCustomerName">--</dd>
+                                </div>
+                                <div>
+                                    <dt>Endereco</dt>
+                                    <dd id="pixAddress">--</dd>
+                                </div>
+                                <div>
+                                    <dt>Prazo estimado</dt>
+                                    <dd id="pixDeliveryEstimate">--</dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
 
-        <label class="field full">
-            Codigo Pix copia e cola
-            <textarea id="pixCopyCode" rows="5" readonly></textarea>
-        </label>
+        <aside class="checkout-right pix-confirmation-summary">
+            <div class="pix-secure-badge" aria-label="Compra segura">
+                <span aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </span>
+                <strong>Compra segura</strong>
+            </div>
 
-        <div class="pix-payment-actions">
-            <button class="btn-confirm" id="copyPixCode" type="button">Copiar codigo Pix</button>
-            <a class="btn-confirm btn-confirm-secondary" asp-page="/Orders/Index">Ja paguei</a>
-        </div>
+            <h2 class="summary-title">Resumo do <em>pedido</em></h2>
 
-        <p class="pix-payment-help" id="pixPaymentHelp"></p>
+            <div class="checkout-cart-items" id="pixSummaryItems">
+                <div class="checkout-cart-item">
+                    <div class="checkout-cart-item__img"><span>Alie Brecho</span></div>
+                    <div class="checkout-cart-item__info">
+                        <div class="checkout-cart-item__name">Produto do pedido</div>
+                        <div class="checkout-cart-item__variant">Variação</div>
+                        <div class="checkout-cart-item__pricing">
+                            <span class="checkout-cart-item__price">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="summary-totals pix-summary-totals">
+                <div class="total-row">
+                    <span class="total-row__label">Subtotal do pedido</span>
+                    <span class="total-row__val" id="pixSubtotal">--</span>
+                </div>
+                <div class="total-row">
+                    <span class="total-row__label">Desconto</span>
+                    <span class="total-row__val desconto" id="pixDiscount">- R$ 0,00</span>
+                </div>
+                <div class="total-row">
+                    <span class="total-row__label" id="pixShippingLabel">Frete</span>
+                    <span class="total-row__val" id="pixShipping">--</span>
+                </div>
+                <div class="total-row total-row--main">
+                    <span class="total-row__label">Total</span>
+                    <span class="total-row__val" id="pixSummaryTotal">--</span>
+                </div>
+            </div>
+
+            <div class="summary-guarantees">
+                <div class="guarantee">Pagamento criptografado e pedido protegido ate a confirmacao.</div>
+            </div>
+        </aside>
     </div>
 </section>
