@@ -152,6 +152,20 @@
                                 Complemento
                                 <input asp-for="Input.Complement" id="complemento" />
                             </label>
+                            <input asp-for="Input.DeliveryMode" id="deliveryMode" type="hidden" />
+                            <div class="shipping-choice full" id="shippingChoice">
+                                <div class="delivery-title">Como voce quer receber?</div>
+                                <div class="shipping-choice__grid">
+                                    <button class="shipping-choice-card selected" type="button" data-delivery-mode="normal">
+                                        <span class="shipping-choice-card__title">Envio Normal</span>
+                                        <span class="shipping-choice-card__desc">Finalize o pedido e receba esta compra imediatamente.</span>
+                                    </button>
+                                    <button class="shipping-choice-card" type="button" data-delivery-mode="bag">
+                                        <span class="shipping-choice-card__title">Sacolinha</span>
+                                        <span class="shipping-choice-card__desc">Pague agora e acumule pecas por ate 2 meses para enviar tudo junto com um frete menor.</span>
+                                    </button>
+                                </div>
+                            </div>
                             <div class="delivery-section full" id="delivery-section">
                                 <div class="delivery-title">Opcao de entrega</div>
                                 <div class="delivery-opts" id="deliveryOpts"></div>

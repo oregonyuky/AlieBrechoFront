@@ -1,16 +1,22 @@
+using System.Security.Claims;
+using AlieBrecho.Application.Abstractions;
 using AlieBrecho.Application.Cart;
+using AlieBrecho.Domain.Auth;
+using AlieBrecho.Domain.Bags;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace AlieBrecho.Presentation.Pages.Cart;
 
-public class IndexModel(CartService cartService) : PageModel
+public class IndexModel(CartService cartService, IBagGateway bagGateway) : PageModel
 {
     public Domain.Orders.Cart Cart { get; private set; } = new([]);
+    public BagSummary? ActiveBag { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
         Cart = await cartService.GetCartAsync(cancellationToken);
+        ActiveBag = await GetActiveBagAsync(cancellationToken);
     }
 
     public async Task<IActionResult> OnPostRemoveAsync(string productId, CancellationToken cancellationToken)
@@ -22,6 +28,30 @@ public class IndexModel(CartService cartService) : PageModel
     public async Task<IActionResult> OnGetSummaryAsync(CancellationToken cancellationToken)
     {
         return await CartJsonAsync(cancellationToken);
+    }
+
+    public async Task<IActionResult> OnPostFinalizeBagAsync(string bagId, CancellationToken cancellationToken)
+    {
+        var result = await bagGateway.FinalizeBagAsync(bagId, cancellationToken);
+        if (result is null)
+        {
+            return BadRequest(new { message = "Nao foi possivel finalizar a sacolinha." });
+        }
+
+        if (!WantsJson())
+        {
+            return RedirectToPage();
+        }
+
+        return new JsonResult(new
+        {
+            bagId = result.BagId,
+            status = result.Status,
+            shippingCost = result.ShippingCost,
+            shippingCostText = result.ShippingCost?.ToString("C"),
+            totalAmount = result.TotalAmount,
+            totalAmountText = result.TotalAmount?.ToString("C")
+        });
     }
 
     public async Task<IActionResult> OnPostAddAsync(string productId, CancellationToken cancellationToken)
@@ -46,6 +76,7 @@ public class IndexModel(CartService cartService) : PageModel
             subtotal = cart.Subtotal,
             subtotalText = cart.Subtotal.ToString("C"),
             isEmpty = cart.IsEmpty,
+            activeBag = MapBag(await GetActiveBagAsync(cancellationToken)),
             items = cart.Items.Select(item => new
             {
                 id = item.Product.Id,
@@ -59,6 +90,46 @@ public class IndexModel(CartService cartService) : PageModel
                 totalText = item.Total.ToString("C")
             })
         });
+    }
+
+    private async Task<BagSummary?> GetActiveBagAsync(CancellationToken cancellationToken)
+    {
+        var customerId = GetAuthenticatedCustomerId();
+        return string.IsNullOrWhiteSpace(customerId)
+            ? null
+            : await bagGateway.GetActiveBagAsync(customerId, cancellationToken);
+    }
+
+    private static object? MapBag(BagSummary? bag)
+    {
+        if (bag is null)
+        {
+            return null;
+        }
+
+        return new
+        {
+            id = bag.Id,
+            status = bag.Status,
+            itemCount = bag.ItemCount,
+            expirationDate = bag.ExpirationDate,
+            expirationDateText = bag.ExpirationDate?.ToString("dd/MM/yyyy HH:mm"),
+            totalItemsValue = bag.TotalItemsValue,
+            totalItemsValueText = bag.TotalItemsValue.ToString("C"),
+            shippingCost = bag.ShippingCost,
+            shippingCostText = bag.ShippingCost?.ToString("C")
+        };
+    }
+
+    private string? GetAuthenticatedCustomerId()
+    {
+        var customerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(customerId))
+        {
+            return customerId;
+        }
+
+        return HttpContext.Session.GetString(AuthSessionKeys.UserId);
     }
 
     private bool WantsJson()

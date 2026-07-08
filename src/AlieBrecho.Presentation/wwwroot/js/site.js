@@ -100,8 +100,13 @@ const pacPrazo = document.getElementById("pacPrazo");
 const pacPrice = document.getElementById("pacPrice");
 const sedexPrazo = document.getElementById("sedexPrazo");
 const sedexPrice = document.getElementById("sedexPrice");
+const cartBagPanel = document.getElementById("cartBagPanel");
+const cartBagCount = document.getElementById("cartBagCount");
+const cartBagDeadline = document.getElementById("cartBagDeadline");
+const finalizeBagBtn = document.getElementById("finalizeBagBtn");
 const token = document.querySelector("meta[name='request-verification-token']")?.content;
 let currentCartSubtotal = 0;
+let currentActiveBagId = "";
 
 function openCart() {
   cartDrawer?.classList.add("open");
@@ -138,6 +143,7 @@ function escapeHtml(value) {
 
 function renderCart(cart) {
   currentCartSubtotal = Number(cart?.subtotal ?? 0);
+  currentActiveBagId = cart?.activeBag?.id || "";
 
   if (cartTotal) {
     cartTotal.textContent = cart?.subtotalText ?? "R$ 0,00";
@@ -148,12 +154,14 @@ function renderCart(cart) {
   }
 
   if (!cartBody || !cartEmpty) {
+    renderActiveBag(cart?.activeBag);
     return;
   }
 
   if (!cart?.items?.length) {
     cartBody.innerHTML = "";
     cartBody.appendChild(cartEmpty);
+    renderActiveBag(cart?.activeBag);
     if (freteResults?.classList.contains("show")) {
       calculateShipping();
     }
@@ -190,6 +198,28 @@ function renderCart(cart) {
 
   if (freteResults?.classList.contains("show")) {
     calculateShipping();
+  }
+
+  renderActiveBag(cart?.activeBag);
+}
+
+function renderActiveBag(activeBag) {
+  if (!cartBagPanel) {
+    return;
+  }
+
+  if (!activeBag?.id) {
+    cartBagPanel.hidden = true;
+    return;
+  }
+
+  cartBagPanel.hidden = false;
+  if (cartBagCount) {
+    const itemCount = Number(activeBag.itemCount || 0);
+    cartBagCount.textContent = `${itemCount} ${itemCount === 1 ? "peca" : "pecas"}`;
+  }
+  if (cartBagDeadline) {
+    cartBagDeadline.textContent = `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;
   }
 }
 
@@ -277,6 +307,38 @@ async function postCart(action, productId) {
   return cart;
 }
 
+async function finalizeBagNow(bagId) {
+  if (!bagId) {
+    showToast("Nenhuma sacolinha em andamento.");
+    return false;
+  }
+
+  const confirmed = window.confirm(
+    "Finalizar a sacolinha agora? O frete sera recalculado com as pecas acumuladas e o envio sera solicitado imediatamente."
+  );
+  if (!confirmed) {
+    return false;
+  }
+
+  const formData = new FormData();
+  formData.append("bagId", bagId);
+
+  const response = await fetch("/Cart?handler=FinalizeBag", {
+    method: "POST",
+    headers: cartHeaders(),
+    body: formData
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || "Nao foi possivel finalizar a sacolinha.");
+  }
+
+  showToast("Sacolinha finalizada. O frete foi recalculado para envio imediato.");
+  await fetchCart().catch(() => {});
+  return true;
+}
+
 cartBtn?.addEventListener("click", async () => {
   try {
     await fetchCart();
@@ -288,6 +350,22 @@ cartBtn?.addEventListener("click", async () => {
 
 cartClose?.addEventListener("click", closeCart);
 cartOverlay?.addEventListener("click", closeCart);
+
+finalizeBagBtn?.addEventListener("click", async () => {
+  try {
+    await finalizeBagNow(currentActiveBagId);
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel finalizar a sacolinha.");
+  }
+});
+
+document.querySelectorAll("[data-finalize-bag-form]").forEach((form) => {
+  form.addEventListener("submit", (event) => {
+    if (!window.confirm("Finalizar a sacolinha agora? O frete sera recalculado para envio imediato.")) {
+      event.preventDefault();
+    }
+  });
+});
 
 cepInput?.addEventListener("input", () => {
   cepInput.value = formatCep(cepInput.value);
@@ -365,6 +443,7 @@ function initCheckoutDynamics() {
   let currentStep = 1;
   let fretePrice = 0;
   let cupomDiscount = 0;
+  let selectedDeliveryMode = "normal";
   const basePrice = Number.parseFloat(form.dataset.subtotal || "0") || 0;
   const cupons = { ALIE10: 10, BRECHO15: 15, BEMVINDA: 20 };
 
@@ -493,6 +572,42 @@ function initCheckoutDynamics() {
     }
   }
 
+  function isBagDelivery() {
+    return selectedDeliveryMode === "bag";
+  }
+
+  function selectDeliveryMode(mode) {
+    selectedDeliveryMode = mode === "bag" ? "bag" : "normal";
+    const input = byId("deliveryMode");
+    if (input) {
+      input.value = selectedDeliveryMode;
+    }
+
+    document.querySelectorAll(".shipping-choice-card").forEach((card) => {
+      card.classList.toggle("selected", card.dataset.deliveryMode === selectedDeliveryMode);
+    });
+
+    if (isBagDelivery()) {
+      fretePrice = 0;
+      byId("delivery-section")?.classList.remove("show");
+      if (byId("val-entrega")) {
+        byId("val-entrega").textContent = "Recalculado ao finalizar a sacolinha";
+        byId("val-entrega").className = "total-row__val calcular";
+      }
+      recalcTotal();
+      return;
+    }
+
+    const cep = val("cep").replace(/\D/g, "");
+    if (cep.length === 8) {
+      showDeliveryOptions(cep);
+    } else if (byId("val-entrega")) {
+      byId("val-entrega").textContent = "A calcular";
+      byId("val-entrega").className = "total-row__val calcular";
+      recalcTotal();
+    }
+  }
+
   function maskCpf(value) {
     const digits = String(value || "").replace(/\D/g, "");
     if (digits.length !== 11) {
@@ -527,8 +642,12 @@ function initCheckoutDynamics() {
 
   function collectCheckoutSnapshot(orderId) {
     const selectedDelivery = document.querySelector(".delivery-opt.selected");
-    const deliveryName = selectedDelivery?.querySelector(".delivery-opt__name")?.textContent?.trim() || "PAC";
-    const deliveryDeadline = selectedDelivery?.querySelector(".delivery-opt__prazo")?.textContent?.trim() || "Ate 5 dias uteis";
+    const deliveryName = isBagDelivery()
+      ? "Sacolinha"
+      : selectedDelivery?.querySelector(".delivery-opt__name")?.textContent?.trim() || "PAC";
+    const deliveryDeadline = isBagDelivery()
+      ? "Envio retido ate a finalizacao da sacolinha"
+      : selectedDelivery?.querySelector(".delivery-opt__prazo")?.textContent?.trim() || "Ate 5 dias uteis";
     const deliveryPrice = byId("val-entrega")?.textContent?.trim() || "A calcular";
     const items = Array.from(document.querySelectorAll(".checkout-cart-item")).map((item) => ({
       name: item.querySelector(".checkout-cart-item__name")?.textContent?.trim() || "Produto",
@@ -644,6 +763,11 @@ function initCheckoutDynamics() {
   }
 
   function showDeliveryOptions(cep) {
+    if (isBagDelivery()) {
+      selectDeliveryMode("bag");
+      return;
+    }
+
     const prefix = Number.parseInt(cep.slice(0, 2), 10);
     let pacDays = 12;
     let sedexDays = 4;
@@ -756,7 +880,9 @@ function initCheckoutDynamics() {
 
     const freteText = byId("val-entrega")?.textContent || "A calcular";
     doneStep(3, `${val("rua")}, ${val("numero")} - ${val("cidade")}/${val("estado")}`);
-    byId("sum-4").textContent = `Entrega: ${freteText}`;
+    byId("sum-4").textContent = isBagDelivery()
+      ? "Sacolinha: frete recalculado no envio conjunto"
+      : `Entrega: ${freteText}`;
     openStep(4);
     return true;
   }
@@ -833,6 +959,15 @@ function initCheckoutDynamics() {
 
   byId("btnCep")?.addEventListener("click", buscarCep);
   byId("btnCupom")?.addEventListener("click", aplicarCupom);
+
+  byId("shippingChoice")?.addEventListener("click", (event) => {
+    const option = event.target.closest(".shipping-choice-card");
+    if (!option) {
+      return;
+    }
+
+    selectDeliveryMode(option.dataset.deliveryMode);
+  });
 
   byId("paymentMethods")?.addEventListener("click", (event) => {
     const option = event.target.closest(".payment-method-card");
@@ -944,6 +1079,7 @@ function initCheckoutDynamics() {
   });
 
   setProgress(1);
+  selectDeliveryMode(val("deliveryMode") || "normal");
   selectPaymentMethod(val("paymentMethod") || "pix");
   recalcTotal();
 }

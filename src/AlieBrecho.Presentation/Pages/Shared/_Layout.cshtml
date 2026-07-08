@@ -58,6 +58,16 @@
                 <span class="cart-total-val" id="cartTotal">R$ 0,00</span>
             </div>
             <a class="btn-checkout" asp-page="/Checkout/Index">Finalizar Pedido</a>
+            <div class="cart-bag-panel" id="cartBagPanel" hidden>
+                <div>
+                    <span class="cart-bag-panel__label">Sacolinha em andamento</span>
+                    <strong id="cartBagCount">0 pecas</strong>
+                    <small id="cartBagDeadline">Prazo a confirmar</small>
+                </div>
+                <button class="btn-checkout btn-checkout-secondary" id="finalizeBagBtn" type="button">
+                    Finalizar sacolinha agora
+                </button>
+            </div>
         </div>
     </aside>
 

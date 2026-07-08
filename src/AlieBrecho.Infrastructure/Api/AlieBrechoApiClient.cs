@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using AlieBrecho.Application.Abstractions;
 using AlieBrecho.Domain.Auth;
+using AlieBrecho.Domain.Bags;
 using AlieBrecho.Domain.Marketing;
 using AlieBrecho.Domain.Orders;
 using AlieBrecho.Domain.Products;
@@ -12,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace AlieBrecho.Infrastructure.Api;
 
 internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
-    : IProductCatalogGateway, IOrderGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway
+    : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -273,6 +274,115 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             result.PaymentId);
     }
 
+    public async Task<BagCheckoutResult?> CreateBagCheckoutAsync(
+        CheckoutRequest request,
+        Cart cart,
+        CancellationToken cancellationToken)
+    {
+        var customerId = await SaveCustomerFromCheckoutAsync(request, cancellationToken);
+        var payload = new BagCheckoutPayload
+        {
+            CustomerId = customerId,
+            Notes = request.Notes,
+            PayerCpf = request.Cpf,
+            ShippingDetail = new ShippingDetailPayload
+            {
+                FirstName = GetFirstName(request.CustomerName),
+                LastName = GetLastName(request.CustomerName),
+                Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+                Street = request.Street,
+                Number = request.Number,
+                Complement = request.Complement,
+                Neighborhood = request.Neighborhood,
+                City = request.City,
+                State = request.State,
+                PostCode = request.PostCode
+            },
+            Items = cart.Items.Select(item => new BagCheckoutItemPayload
+            {
+                ProductId = item.Product.Id,
+                Quantity = item.Quantity,
+                UnitPrice = item.Product.UnitPrice
+            }).ToList()
+        };
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.BagCheckoutPath,
+            payload,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<BagCheckoutDto>(response, cancellationToken);
+        if (result.Data is null)
+        {
+            return null;
+        }
+
+        return new BagCheckoutResult(
+            result.Data.BagId ?? result.Data.Id,
+            result.Data.PaymentUrl,
+            BuildQrImage(result.Data.PixQrCodeBase64) ?? result.Data.PixQrCode,
+            result.Data.PixCode,
+            result.Data.PaymentId);
+    }
+
+    public async Task<BagSummary?> GetActiveBagAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return null;
+        }
+
+        var path = _options.ActiveBagPathTemplate.Replace(
+            "{customerId}",
+            Uri.EscapeDataString(customerId));
+
+        try
+        {
+            using var response = await httpClient.GetAsync(path, cancellationToken);
+            await EnsureSuccessAsync(response, cancellationToken);
+
+            var result = await ReadWrappedAsync<BagSummaryDto>(response, cancellationToken);
+            return result.Data is null ? null : MapBagSummary(result.Data);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<BagFinalizeResult?> FinalizeBagAsync(
+        string bagId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(bagId))
+        {
+            return null;
+        }
+
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.FinalizeBagPath,
+            new FinalizeBagPayload { BagId = bagId },
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var result = await ReadWrappedAsync<BagFinalizeDto>(response, cancellationToken);
+        return result.Data is null
+            ? null
+            : new BagFinalizeResult(
+                result.Data.BagId ?? result.Data.Id,
+                result.Data.Status,
+                result.Data.ShippingCost,
+                result.Data.TotalAmount);
+    }
+
     public async Task<PixPaymentStatusResult?> GetMercadoPagoPixPaymentStatusAsync(
         string paymentId,
         CancellationToken cancellationToken)
@@ -281,6 +391,11 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             .Replace("{paymentId}", Uri.EscapeDataString(paymentId));
 
         using var response = await httpClient.GetAsync(path, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
         await EnsureSuccessAsync(response, cancellationToken);
 
         var result = await ReadWrappedAsync<MercadoPagoPixStatusDto>(response, cancellationToken);
@@ -708,6 +823,26 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         };
     }
 
+    private static BagSummary MapBagSummary(BagSummaryDto dto)
+    {
+        return new BagSummary
+        {
+            Id = dto.Id,
+            Status = dto.Status,
+            ExpirationDate = dto.ExpirationDate,
+            TotalItemsValue = dto.TotalItemsValue,
+            ShippingCost = dto.ShippingCost,
+            ItemCount = dto.ItemCount
+        };
+    }
+
+    private static string? BuildQrImage(string? qrCodeBase64)
+    {
+        return string.IsNullOrWhiteSpace(qrCodeBase64)
+            ? null
+            : $"data:image/png;base64,{qrCodeBase64}";
+    }
+
     private string? ResolveImageUrl(string? imageUrl)
     {
         if (string.IsNullOrWhiteSpace(imageUrl))
@@ -838,6 +973,57 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     private sealed record OrderDto
     {
         public string? Id { get; init; }
+    }
+
+    private sealed record BagCheckoutPayload
+    {
+        public string? CustomerId { get; init; }
+        public string? Notes { get; init; }
+        public string? PayerCpf { get; init; }
+        public ShippingDetailPayload? ShippingDetail { get; init; }
+        public List<BagCheckoutItemPayload> Items { get; init; } = [];
+    }
+
+    private sealed record BagCheckoutItemPayload
+    {
+        public string? ProductId { get; init; }
+        public int Quantity { get; init; }
+        public decimal? UnitPrice { get; init; }
+    }
+
+    private sealed record BagCheckoutDto
+    {
+        public string? Id { get; init; }
+        public string? BagId { get; init; }
+        public string? PaymentUrl { get; init; }
+        public string? PixQrCodeBase64 { get; init; }
+        public string? PixQrCode { get; init; }
+        public string? PixCode { get; init; }
+        public string? PaymentId { get; init; }
+    }
+
+    private sealed record BagSummaryDto
+    {
+        public string? Id { get; init; }
+        public string? Status { get; init; }
+        public DateTime? ExpirationDate { get; init; }
+        public decimal TotalItemsValue { get; init; }
+        public decimal? ShippingCost { get; init; }
+        public int ItemCount { get; init; }
+    }
+
+    private sealed record FinalizeBagPayload
+    {
+        public string? BagId { get; init; }
+    }
+
+    private sealed record BagFinalizeDto
+    {
+        public string? Id { get; init; }
+        public string? BagId { get; init; }
+        public string? Status { get; init; }
+        public decimal? ShippingCost { get; init; }
+        public decimal? TotalAmount { get; init; }
     }
 
     private sealed record MercadoPagoPixPaymentPayload

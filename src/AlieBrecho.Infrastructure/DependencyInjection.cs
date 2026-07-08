@@ -28,6 +28,8 @@ public static class DependencyInjection
             provider.GetRequiredService<AlieBrechoApiClient>());
         services.AddScoped<IOrderGateway>(provider =>
             provider.GetRequiredService<AlieBrechoApiClient>());
+        services.AddScoped<IBagGateway>(provider =>
+            provider.GetRequiredService<AlieBrechoApiClient>());
         services.AddScoped<IAuthenticationGateway>(provider =>
             provider.GetRequiredService<AlieBrechoApiClient>());
         services.AddScoped<ICustomerGateway>(provider =>
