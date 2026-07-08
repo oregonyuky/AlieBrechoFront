@@ -58,16 +58,37 @@
                 <span class="cart-total-val" id="cartTotal">R$ 0,00</span>
             </div>
             <a class="btn-checkout" asp-page="/Checkout/Index">Finalizar Pedido</a>
+        </div>
+    </aside>
+
+    <div class="cart-overlay" id="bagOverlay"></div>
+    <aside class="cart-drawer bag-drawer" id="bagDrawer" aria-label="Produtos comprados" aria-hidden="true">
+        <div class="cart-header">
+            <div class="cart-title">Minha Sacolinha</div>
+            <button class="cart-close" id="bagClose" type="button" aria-label="Fechar sacolinha">x</button>
+        </div>
+        <div class="cart-body" id="bagBody">
+            <div class="cart-empty-state" id="bagEmpty">
+                <span aria-hidden="true">Pedidos</span>
+                <p>Seus produtos comprados aparecerao aqui depois do pagamento.</p>
+            </div>
+        </div>
+        <div class="cart-footer bag-footer">
             <div class="cart-bag-panel" id="cartBagPanel" hidden>
                 <div>
                     <span class="cart-bag-panel__label">Sacolinha em andamento</span>
                     <strong id="cartBagCount">0 pecas</strong>
                     <small id="cartBagDeadline">Prazo a confirmar</small>
                 </div>
-                <button class="btn-checkout btn-checkout-secondary" id="finalizeBagBtn" type="button">
-                    Finalizar sacolinha agora
-                </button>
             </div>
+            <button class="btn-checkout btn-checkout-secondary" id="finalizeBagBtn" type="button">
+                <svg class="bag-icon btn-checkout__icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6.5 8.5h11l-.7 10.1a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 8.5Z"></path>
+                    <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path>
+                </svg>
+                Finalizar sacolinha agora
+            </button>
+            <a class="btn-checkout" asp-page="/Orders/Index">Ver todos os pedidos</a>
         </div>
     </aside>
 
@@ -138,12 +159,20 @@
             </ul>
             <div class="nav__actions">
                 <button class="nav__icon cart-nav-button" id="cartBtn" type="button" aria-label="Abrir carrinho">
-                    <svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg class="nav-svg bag-icon" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M6.5 8.5h11l-.7 10.1a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 8.5Z"></path>
                         <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path>
                     </svg>
                     <span class="sr-only">Carrinho</span>
                     <span class="cart-badge" id="cartBadge">0</span>
+                </button>
+                <button class="nav__icon cart-nav-button" id="bagBtn" type="button" aria-label="Ver produtos comprados">
+                    <svg class="nav-svg bag-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6.5 8.5h11l-.7 10.1a2 2 0 0 1-2 1.9H9.2a2 2 0 0 1-2-1.9L6.5 8.5Z"></path>
+                        <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"></path>
+                    </svg>
+                    <span class="sr-only">Produtos comprados</span>
+                    <span class="cart-badge" id="bagBadge">0</span>
                 </button>
                 <div class="account-menu" id="accountMenu">
                     <button class="account-menu__trigger" id="accountMenuToggle" type="button" aria-label="Abrir menu da conta" aria-haspopup="true" aria-expanded="false">

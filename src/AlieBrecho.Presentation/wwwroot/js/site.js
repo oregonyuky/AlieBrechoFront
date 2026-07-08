@@ -88,6 +88,13 @@ const cartDrawer = document.getElementById("cartDrawer");
 const cartOverlay = document.getElementById("cartOverlay");
 const cartBtn = document.getElementById("cartBtn");
 const cartClose = document.getElementById("cartClose");
+const bagDrawer = document.getElementById("bagDrawer");
+const bagOverlay = document.getElementById("bagOverlay");
+const bagBtn = document.getElementById("bagBtn");
+const bagClose = document.getElementById("bagClose");
+const bagBody = document.getElementById("bagBody");
+const bagEmpty = document.getElementById("bagEmpty");
+const bagBadge = document.getElementById("bagBadge");
 const cartBody = document.getElementById("cartBody");
 const cartEmpty = document.getElementById("cartEmpty");
 const cartTotal = document.getElementById("cartTotal");
@@ -108,18 +115,41 @@ const token = document.querySelector("meta[name='request-verification-token']")?
 let currentCartSubtotal = 0;
 let currentActiveBagId = "";
 
+function syncDrawerBodyScroll() {
+  const hasOpenPanel = Boolean(
+    mobileMenu?.classList.contains("open") ||
+    cartDrawer?.classList.contains("open") ||
+    bagDrawer?.classList.contains("open")
+  );
+  document.body.style.overflow = hasOpenPanel ? "hidden" : "";
+}
+
+function setDrawerOpen(drawer, overlay, isOpen) {
+  drawer?.classList.toggle("open", isOpen);
+  drawer?.setAttribute("aria-hidden", String(!isOpen));
+  overlay?.classList.toggle("open", isOpen);
+  syncDrawerBodyScroll();
+}
+
 function openCart() {
-  cartDrawer?.classList.add("open");
-  cartDrawer?.setAttribute("aria-hidden", "false");
-  cartOverlay?.classList.add("open");
-  document.body.style.overflow = "hidden";
+  closeBag();
+  closeAccountMenu();
+  setDrawerOpen(cartDrawer, cartOverlay, true);
 }
 
 function closeCart() {
-  cartDrawer?.classList.remove("open");
-  cartDrawer?.setAttribute("aria-hidden", "true");
-  cartOverlay?.classList.remove("open");
-  document.body.style.overflow = mobileMenu?.classList.contains("open") ? "hidden" : "";
+  setDrawerOpen(cartDrawer, cartOverlay, false);
+}
+
+function openBag() {
+  closeCart();
+  closeAccountMenu();
+  renderPaidOrders();
+  setDrawerOpen(bagDrawer, bagOverlay, true);
+}
+
+function closeBag() {
+  setDrawerOpen(bagDrawer, bagOverlay, false);
 }
 
 function cartHeaders() {
@@ -139,6 +169,122 @@ function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = value ?? "";
   return div.innerHTML;
+}
+
+function getStoredOrders() {
+  const orders = [];
+
+  try {
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      if (!key?.startsWith("aliebrecho:order-confirm:")) {
+        continue;
+      }
+
+      const order = JSON.parse(sessionStorage.getItem(key) || "{}");
+      if (order?.orderId) {
+        orders.push(order);
+      }
+    }
+  } catch {
+    return [];
+  }
+
+  return orders.sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0));
+}
+
+function updateBagBadge() {
+  if (!bagBadge) {
+    return;
+  }
+
+  bagBadge.textContent = getStoredOrders().length;
+}
+
+function markStoredOrderAsPaid(orderId) {
+  if (!orderId) {
+    return;
+  }
+
+  const key = `aliebrecho:order-confirm:${orderId}`;
+  const raw = sessionStorage.getItem(key);
+  if (!raw) {
+    return;
+  }
+
+  try {
+    const order = JSON.parse(raw);
+    order.status = "paid";
+    order.statusText = "Pago";
+    order.paidAt = new Date().toISOString();
+    sessionStorage.setItem(key, JSON.stringify(order));
+    updateBagBadge();
+  } catch {
+    // Mantem a sacolinha funcional mesmo se o snapshot local estiver invalido.
+  }
+}
+
+function renderPaidOrders() {
+  updateBagBadge();
+
+  if (!bagBody || !bagEmpty) {
+    return;
+  }
+
+  const orders = getStoredOrders();
+  if (!orders.length) {
+    bagBody.innerHTML = "";
+    bagBody.appendChild(bagEmpty);
+    return;
+  }
+
+  bagBody.innerHTML = "";
+  orders.forEach((order) => {
+    const orderBlock = document.createElement("div");
+    orderBlock.className = "bag-order";
+    const orderId = escapeHtml(order.orderId);
+    const status = escapeHtml(order.statusText || (order.status === "paid" ? "Pago" : "Pagamento iniciado"));
+    const items = Array.isArray(order.items) ? order.items : [];
+    const itemCount = items.reduce((total, item) => total + (Number(item.quantity) || 1), 0);
+
+    const meta = document.createElement("div");
+    meta.className = "bag-order__meta";
+    meta.innerHTML = `
+      <span>Pedido ${orderId}</span>
+      <span class="bag-order__status">${status}</span>
+      <span>${itemCount} ${itemCount === 1 ? "peca" : "pecas"}</span>
+    `;
+    orderBlock.appendChild(meta);
+
+    items.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "cart-item";
+      const name = escapeHtml(item.name || "Produto");
+      const image = escapeHtml(item.image || "");
+      const variant = escapeHtml(item.variant || "Tamanho unico");
+      const price = escapeHtml(item.price || "");
+      const quantity = escapeHtml(item.quantity || "1");
+      const media = item.image
+        ? `<img src="${image}" alt="${name}">`
+        : `<span>${name}</span>`;
+
+      row.innerHTML = `
+        <div class="cart-item__img">${media}</div>
+        <div class="cart-item__info">
+          <div class="cart-item__name">${name}</div>
+          <div class="cart-item__size">${variant}</div>
+          <div class="cart-item__qty-row">
+            <span class="qty-val">${quantity} unidade</span>
+          </div>
+        </div>
+        <div class="cart-item__price">${price}</div>
+      `;
+
+      orderBlock.appendChild(row);
+    });
+
+    bagBody.appendChild(orderBlock);
+  });
 }
 
 function renderCart(cart) {
@@ -350,6 +496,17 @@ cartBtn?.addEventListener("click", async () => {
 
 cartClose?.addEventListener("click", closeCart);
 cartOverlay?.addEventListener("click", closeCart);
+bagBtn?.addEventListener("click", async () => {
+  try {
+    await fetchCart();
+  } catch {
+    currentActiveBagId = "";
+  }
+
+  openBag();
+});
+bagClose?.addEventListener("click", closeBag);
+bagOverlay?.addEventListener("click", closeBag);
 
 finalizeBagBtn?.addEventListener("click", async () => {
   try {
@@ -428,11 +585,16 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && cartDrawer?.classList.contains("open")) {
     closeCart();
   }
+
+  if (event.key === "Escape" && bagDrawer?.classList.contains("open")) {
+    closeBag();
+  }
 });
 
 fetchCart().catch(() => {
   renderCart({ itemCount: 0, subtotalText: "R$ 0,00", items: [] });
 });
+updateBagBadge();
 
 function initCheckoutDynamics() {
   const form = document.getElementById("checkoutForm");
@@ -661,6 +823,8 @@ function initCheckoutDynamics() {
       orderId,
       generatedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      status: "payment_started",
+      statusText: "Pagamento iniciado",
       customer: {
         name: maskName(val("nome"), val("sobrenome")),
         cpf: maskCpf(val("cpf")),
@@ -683,6 +847,7 @@ function initCheckoutDynamics() {
     };
 
     sessionStorage.setItem(`aliebrecho:order-confirm:${orderId}`, JSON.stringify(snapshot));
+    updateBagBadge();
   }
 
   function confirmEmail() {
@@ -1263,6 +1428,7 @@ function initPixPaymentPage() {
       if (isApproved(statusData.status) || isApproved(statusData.orderStatus)) {
         stopPolling();
         sessionStorage.removeItem(`aliebrecho:pix:${orderId}`);
+        markStoredOrderAsPaid(orderId);
         if (help) {
           help.textContent = "Pagamento confirmado. Redirecionando...";
         }
