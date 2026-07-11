@@ -13,9 +13,9 @@
             </div>
 
             <div class="pix-confirmation-heading">
-                <p class="eyebrow">Confirmacao do pedido</p>
-                <h1 class="checkout-title">Recebemos seu <em>pedido!</em></h1>
-                <p class="pix-order-number">Numero do pedido: <strong>@Model.OrderId</strong></p>
+                <p class="eyebrow" id="pixConfirmationEyebrow">Confirmacao do pedido</p>
+                <h1 class="checkout-title" id="pixConfirmationTitle">Recebemos seu <em>pedido!</em></h1>
+                <p class="pix-order-number" id="pixOrderNumberLabel">Numero do pedido: <strong>@Model.OrderId</strong></p>
             </div>
 
             <section class="checkout-step-card active pix-payment-card" aria-labelledby="pixPaymentTitle">
@@ -130,13 +130,13 @@
                 <strong>Compra segura</strong>
             </div>
 
-            <h2 class="summary-title">Resumo do <em>pedido</em></h2>
+            <h2 class="summary-title" id="pixSummaryTitle">Resumo do <em>pedido</em></h2>
 
             <div class="checkout-cart-items" id="pixSummaryItems">
                 <div class="checkout-cart-item">
                     <div class="checkout-cart-item__img"><span>Alie Brecho</span></div>
                     <div class="checkout-cart-item__info">
-                        <div class="checkout-cart-item__name">Produto do pedido</div>
+                        <div class="checkout-cart-item__name" id="pixFallbackItemName">Produto do pedido</div>
                         <div class="checkout-cart-item__variant">Variação</div>
                         <div class="checkout-cart-item__pricing">
                             <span class="checkout-cart-item__price">--</span>
@@ -147,7 +147,7 @@
 
             <div class="summary-totals pix-summary-totals">
                 <div class="total-row">
-                    <span class="total-row__label">Subtotal do pedido</span>
+                    <span class="total-row__label" id="pixSubtotalLabel">Subtotal do pedido</span>
                     <span class="total-row__val" id="pixSubtotal">--</span>
                 </div>
                 <div class="total-row">

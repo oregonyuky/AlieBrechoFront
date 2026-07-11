@@ -42,7 +42,9 @@
                     <div class="progress-line"></div>
                     <div class="progress-step" id="prog-3"><div class="progress-dot"></div>Entrega</div>
                     <div class="progress-line"></div>
-                    <div class="progress-step" id="prog-4"><div class="progress-dot"></div>Pagamento</div>
+                    <div class="progress-step" id="prog-4"><div class="progress-dot"></div>Recebimento</div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="prog-5"><div class="progress-dot"></div>Pagamento</div>
                 </div>
 
                 <form method="post" class="checkout-form" id="checkoutForm" data-subtotal="@Model.Cart.Subtotal.ToString(System.Globalization.CultureInfo.InvariantCulture)">
@@ -152,6 +154,22 @@
                                 Complemento
                                 <input asp-for="Input.Complement" id="complemento" />
                             </label>
+                            <button class="btn-confirm full" type="button" data-confirm-step="3">Continuar</button>
+                        </div>
+                    </div>
+
+                    <div class="checkout-step-card" id="card-4">
+                        <div class="checkout-step-header">
+                            <div class="checkout-step-header__left">
+                                <div class="checkout-step-num" id="num-4">4</div>
+                                <div>
+                                    <div class="checkout-step-label">Como voce quer receber?</div>
+                                    <div class="checkout-step-summary" id="sum-4"></div>
+                                </div>
+                            </div>
+                            <button class="btn-edit-step" type="button" data-edit-step="4">Editar</button>
+                        </div>
+                        <div class="checkout-step-body checkout-form-grid checkout-form-grid--3">
                             <input asp-for="Input.DeliveryMode" id="deliveryMode" type="hidden" />
                             <div class="shipping-choice full" id="shippingChoice">
                                 <div class="delivery-title">Como voce quer receber?</div>
@@ -170,30 +188,32 @@
                                 <div class="delivery-title">Opcao de entrega</div>
                                 <div class="delivery-opts" id="deliveryOpts"></div>
                             </div>
-                            <button class="btn-confirm full" type="button" data-confirm-step="3">Continuar</button>
+                            <button class="btn-confirm full" type="button" data-confirm-step="4">Continuar</button>
                         </div>
                     </div>
 
-                    <div class="checkout-step-card" id="card-4">
+                    <div class="checkout-step-card" id="card-5">
                         <div class="checkout-step-header">
                             <div class="checkout-step-header__left">
-                                <div class="checkout-step-num" id="num-4">4</div>
+                                <div class="checkout-step-num" id="num-5">5</div>
                                 <div>
                                     <div class="checkout-step-label">Pagamento</div>
-                                    <div class="checkout-step-summary" id="sum-4"></div>
+                                    <div class="checkout-step-summary" id="sum-5"></div>
                                 </div>
                             </div>
-                            <button class="btn-edit-step" type="button" data-edit-step="4">Editar</button>
+                            <button class="btn-edit-step" type="button" data-edit-step="5">Editar</button>
                         </div>
                         <div class="checkout-step-body">
                             <input asp-for="Input.PaymentMethod" id="paymentMethod" type="hidden" />
                             <div class="payment-methods" id="paymentMethods">
                                 <button class="payment-method-card selected" type="button" data-payment-method="pix">
-                                    <span class="payment-method-card__title">Pix</span>
+                                    <span class="payment-method-card__head">
+                                        <img class="payment-method-card__icon" src="~/images/icons/pix.svg" alt="" aria-hidden="true" />
+                                        <span class="payment-method-card__title">Pix</span>
+                                    </span>
                                     <span class="payment-method-card__desc">Pagamento instantaneo com QR Code seguro do Mercado Pago.</span>
                                 </button>
                             </div>
-                            <label class="field full">Observacoes<textarea asp-for="Input.Notes" id="observacoes"></textarea></label>
                             <button class="btn-confirm btn-confirm-final" id="btnFinalizar" type="submit">Pagar</button>
                         </div>
                     </div>

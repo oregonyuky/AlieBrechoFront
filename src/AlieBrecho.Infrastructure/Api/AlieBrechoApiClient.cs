@@ -132,6 +132,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task<CustomerProfile?> GetCustomerProfileAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return null;
+        }
+
+        var customer = await GetCustomerAsync(customerId, cancellationToken);
+        return customer is null ? null : MapCustomerProfile(customer);
+    }
+
     public async Task<Product?> GetProductAsync(string productId, CancellationToken cancellationToken)
     {
         var detailPath = _options.ProductDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(productId));
@@ -522,6 +535,47 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
                 ? "Active"
                 : existingCustomer.CustomerStatus
         };
+    }
+
+    private static CustomerProfile MapCustomerProfile(CustomerDto customer)
+    {
+        var (firstName, lastName) = SplitCustomerName(customer);
+
+        return new CustomerProfile
+        {
+            Id = customer.Id,
+            Name = customer.Name,
+            FirstName = string.IsNullOrWhiteSpace(customer.FirstName) ? firstName : customer.FirstName,
+            LastName = string.IsNullOrWhiteSpace(customer.LastName) ? lastName : customer.LastName,
+            Cpf = customer.Cpf,
+            PhoneNumber = customer.PhoneNumber,
+            EmailAddress = customer.EmailAddress,
+            Street = customer.Street,
+            Number = customer.Number,
+            Neighborhood = customer.Neighborhood,
+            Complement = customer.Complement,
+            City = customer.City,
+            State = customer.State,
+            PostalCode = customer.PostalCode
+        };
+    }
+
+    private static (string? FirstName, string? LastName) SplitCustomerName(CustomerDto customer)
+    {
+        if (!string.IsNullOrWhiteSpace(customer.FirstName) || !string.IsNullOrWhiteSpace(customer.LastName))
+        {
+            return (customer.FirstName, customer.LastName);
+        }
+
+        var parts = (customer.Name ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (parts.Length == 0)
+        {
+            return (null, null);
+        }
+
+        return (parts[0], parts.Length == 1 ? null : string.Join(' ', parts.Skip(1)));
     }
 
     private async Task<T> GetWrappedAsync<T>(
@@ -1075,6 +1129,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     private sealed record CustomerDto
     {
         public string? Id { get; init; }
+        public string? Name { get; init; }
+        public string? FirstName { get; init; }
+        public string? LastName { get; init; }
+        public string? Cpf { get; init; }
+        public string? PhoneNumber { get; init; }
+        public string? EmailAddress { get; init; }
+        public string? Street { get; init; }
+        public string? Number { get; init; }
+        public string? Neighborhood { get; init; }
+        public string? Complement { get; init; }
+        public string? City { get; init; }
+        public string? State { get; init; }
+        public string? PostalCode { get; init; }
         public string? Website { get; init; }
         public string? Instagram { get; init; }
         public string? TwitterX { get; init; }

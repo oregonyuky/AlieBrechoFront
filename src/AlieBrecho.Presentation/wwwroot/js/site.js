@@ -171,6 +171,15 @@ function escapeHtml(value) {
   return div.innerHTML;
 }
 
+function readSessionJson(key) {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 function getStoredOrders() {
   const orders = [];
 
@@ -181,8 +190,9 @@ function getStoredOrders() {
         continue;
       }
 
-      const order = JSON.parse(sessionStorage.getItem(key) || "{}");
-      if (order?.orderId) {
+      const order = readSessionJson(key);
+      const isBagOrder = order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
+      if (order?.orderId && isBagOrder) {
         orders.push(order);
       }
     }
@@ -207,13 +217,12 @@ function markStoredOrderAsPaid(orderId) {
   }
 
   const key = `aliebrecho:order-confirm:${orderId}`;
-  const raw = sessionStorage.getItem(key);
-  if (!raw) {
+  const order = readSessionJson(key);
+  if (!order) {
     return;
   }
 
   try {
-    const order = JSON.parse(raw);
     order.status = "paid";
     order.statusText = "Pago";
     order.paidAt = new Date().toISOString();
@@ -606,6 +615,7 @@ function initCheckoutDynamics() {
   let fretePrice = 0;
   let cupomDiscount = 0;
   let selectedDeliveryMode = "normal";
+  const totalSteps = 5;
   const basePrice = Number.parseFloat(form.dataset.subtotal || "0") || 0;
   const cupons = { ALIE10: 10, BRECHO15: 15, BEMVINDA: 20 };
 
@@ -615,6 +625,10 @@ function initCheckoutDynamics() {
 
   function applyMask(id, fn) {
     const input = byId(id);
+    if (input) {
+      input.value = fn(input.value);
+    }
+
     input?.addEventListener("input", () => {
       input.value = fn(input.value);
     });
@@ -677,7 +691,7 @@ function initCheckoutDynamics() {
   }
 
   function setProgress(step) {
-    for (let index = 1; index <= 4; index += 1) {
+    for (let index = 1; index <= totalSteps; index += 1) {
       const progress = byId(`prog-${index}`);
       progress?.classList.remove("active", "done");
       if (index < step) {
@@ -689,7 +703,7 @@ function initCheckoutDynamics() {
   }
 
   function openStep(step) {
-    for (let index = 1; index <= 4; index += 1) {
+    for (let index = 1; index <= totalSteps; index += 1) {
       byId(`card-${index}`)?.classList.remove("active");
     }
 
@@ -717,7 +731,7 @@ function initCheckoutDynamics() {
   }
 
   function editStep(step) {
-    for (let index = step; index <= 4; index += 1) {
+    for (let index = step; index <= totalSteps; index += 1) {
       byId(`card-${index}`)?.classList.remove("done", "active");
       const number = byId(`num-${index}`);
       if (number) {
@@ -736,6 +750,17 @@ function initCheckoutDynamics() {
 
   function isBagDelivery() {
     return selectedDeliveryMode === "bag";
+  }
+
+  function getDeliveryModeSummary() {
+    if (isBagDelivery()) {
+      return "Sacolinha: frete recalculado no envio conjunto";
+    }
+
+    const selectedDelivery = document.querySelector(".delivery-opt.selected");
+    const deliveryName = selectedDelivery?.querySelector(".delivery-opt__name")?.textContent?.trim() || "PAC";
+    const freteText = byId("val-entrega")?.textContent || "A calcular";
+    return `${deliveryName}: ${freteText}`;
   }
 
   function selectDeliveryMode(mode) {
@@ -821,6 +846,7 @@ function initCheckoutDynamics() {
 
     const snapshot = {
       orderId,
+      deliveryType: isBagDelivery() ? "bag" : "normal",
       generatedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       status: "payment_started",
@@ -1043,12 +1069,25 @@ function initCheckoutDynamics() {
       return false;
     }
 
-    const freteText = byId("val-entrega")?.textContent || "A calcular";
+    if (!isBagDelivery() && !document.querySelector(".delivery-opt.selected")) {
+      showDeliveryOptions(val("cep").replace(/\D/g, ""));
+    }
+
     doneStep(3, `${val("rua")}, ${val("numero")} - ${val("cidade")}/${val("estado")}`);
-    byId("sum-4").textContent = isBagDelivery()
-      ? "Sacolinha: frete recalculado no envio conjunto"
-      : `Entrega: ${freteText}`;
     openStep(4);
+    return true;
+  }
+
+  function confirmRecebimento() {
+    if (!isBagDelivery() && !document.querySelector(".delivery-opt.selected")) {
+      const cep = val("cep").replace(/\D/g, "");
+      if (cep.length === 8) {
+        showDeliveryOptions(cep);
+      }
+    }
+
+    doneStep(4, getDeliveryModeSummary());
+    openStep(5);
     return true;
   }
 
@@ -1090,7 +1129,7 @@ function initCheckoutDynamics() {
       card.classList.toggle("selected", card.dataset.paymentMethod === normalized);
     });
 
-    const summary = byId("sum-4");
+    const summary = byId("sum-5");
     if (summary) {
       summary.textContent = getPaymentMethodLabel(normalized);
     }
@@ -1110,6 +1149,9 @@ function initCheckoutDynamics() {
     }
     if (step === 3) {
       return confirmEntrega();
+    }
+    if (step === 4) {
+      return confirmRecebimento();
     }
     return true;
   }
@@ -1181,12 +1223,12 @@ function initCheckoutDynamics() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    if (currentStep < 4) {
+    if (currentStep < totalSteps) {
       confirmStep(currentStep);
       return;
     }
 
-    const valid = confirmEmail() && confirmDados() && confirmEntrega();
+    const valid = confirmEmail() && confirmDados() && confirmEntrega() && confirmRecebimento();
     if (!valid) {
       return;
     }
@@ -1196,7 +1238,7 @@ function initCheckoutDynamics() {
       return;
     }
 
-    doneStep(4, "Redirecionando para pagamento");
+    doneStep(5, "Redirecionando para pagamento");
     const button = byId("btnFinalizar");
     if (button) {
       button.textContent = "Processando...";
@@ -1264,7 +1306,8 @@ function initPixPaymentPage() {
   const qrImage = document.getElementById("pixQrImage");
   const qrText = document.getElementById("pixQrText");
   const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
-  const snapshotRaw = orderId ? sessionStorage.getItem(`aliebrecho:order-confirm:${orderId}`) : null;
+  const snapshot = orderId ? readSessionJson(`aliebrecho:order-confirm:${orderId}`) : null;
+  const isBagPayment = snapshot?.deliveryType === "bag" || snapshot?.delivery?.mode === "Sacolinha";
   let pollTimer = null;
 
   const moneyFallback = "--";
@@ -1303,10 +1346,27 @@ function initPixPaymentPage() {
     .replace(/'/g, "&#039;");
 
   const renderSnapshot = () => {
-    const snapshot = snapshotRaw ? JSON.parse(snapshotRaw) : null;
     const totals = snapshot?.totals || {};
     const delivery = snapshot?.delivery || {};
     const customer = snapshot?.customer || {};
+
+    if (isBagPayment) {
+      setText("pixConfirmationEyebrow", "Confirmacao da sacolinha");
+      const title = document.getElementById("pixConfirmationTitle");
+      if (title) {
+        title.innerHTML = "Recebemos sua <em>sacolinha!</em>";
+      }
+      const orderNumberLabel = document.getElementById("pixOrderNumberLabel");
+      if (orderNumberLabel) {
+        orderNumberLabel.innerHTML = `Numero da sacolinha: <strong>${escapeHtml(orderId)}</strong>`;
+      }
+      const summaryTitle = document.getElementById("pixSummaryTitle");
+      if (summaryTitle) {
+        summaryTitle.innerHTML = "Resumo da <em>sacolinha</em>";
+      }
+      setText("pixFallbackItemName", "Produto da sacolinha");
+      setText("pixSubtotalLabel", "Subtotal da sacolinha");
+    }
 
     setText("pixTotalValue", totals.total || moneyFallback);
     setText("pixExpiresAt", formatDateTime(snapshot?.expiresAt));
@@ -1380,32 +1440,6 @@ function initPixPaymentPage() {
       String(status || "").toLowerCase() === "paid";
   };
 
-  const navigateSoft = async (url) => {
-    try {
-      const response = await fetch(url, {
-        headers: { "X-Requested-With": "XMLHttpRequest" }
-      });
-      if (!response.ok) {
-        throw new Error("Nao foi possivel carregar a pagina.");
-      }
-
-      const html = await response.text();
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      const nextMain = doc.querySelector("main");
-      const currentMain = document.querySelector("main");
-      if (!nextMain || !currentMain) {
-        throw new Error("Pagina invalida.");
-      }
-
-      document.title = doc.title || document.title;
-      currentMain.replaceWith(nextMain);
-      history.pushState({}, "", url);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      window.location.href = url;
-    }
-  };
-
   const checkPaymentStatus = async () => {
     if (!data.paymentId) {
       if (help) {
@@ -1427,12 +1461,12 @@ function initPixPaymentPage() {
 
       if (isApproved(statusData.status) || isApproved(statusData.orderStatus)) {
         stopPolling();
-        sessionStorage.removeItem(`aliebrecho:pix:${orderId}`);
         markStoredOrderAsPaid(orderId);
+        sessionStorage.removeItem(`aliebrecho:pix:${orderId}`);
         if (help) {
           help.textContent = "Pagamento confirmado. Redirecionando...";
         }
-        await navigateSoft(`/obrigado?pedido=${encodeURIComponent(orderId)}`);
+        window.location.href = `/obrigado?pedido=${encodeURIComponent(orderId)}`;
         return;
       }
 
@@ -1467,6 +1501,65 @@ function initPixPaymentPage() {
 }
 
 initPixPaymentPage();
+
+function initThanksPage() {
+  const shell = document.querySelector(".thanks-shell[data-thanks-order-id]");
+  if (!shell) {
+    return;
+  }
+
+  const orderId = shell.dataset.thanksOrderId;
+  if (!orderId) {
+    return;
+  }
+
+  const snapshot = readSessionJson(`aliebrecho:order-confirm:${orderId}`);
+  if (!snapshot) {
+    return;
+  }
+
+  const isBagOrder = snapshot?.deliveryType === "bag" || snapshot?.delivery?.mode === "Sacolinha";
+  if (!isBagOrder) {
+    return;
+  }
+
+  const panel = shell.querySelector(".thanks-panel");
+  if (!panel) {
+    return;
+  }
+
+  panel.innerHTML = `
+    <p class="eyebrow">Pagamento confirmado</p>
+    <h1>Obrigado pela sua compra!</h1>
+    <p class="thanks-text">Sua sacolinha foi confirmada e as pecas pagas ficaram indisponiveis para novas compras.</p>
+
+    <div class="thanks-summary" aria-label="Resumo da sacolinha">
+      <div>
+        <span>Sacolinha</span>
+        <strong>${escapeHtml(orderId)}</strong>
+      </div>
+      <div>
+        <span>Valor pago</span>
+        <strong>${escapeHtml(snapshot?.totals?.total || "--")}</strong>
+      </div>
+      <div>
+        <span>Forma de pagamento</span>
+        <strong>Pix</strong>
+      </div>
+      <div>
+        <span>Status</span>
+        <strong>${escapeHtml(snapshot?.statusText || "Pago")}</strong>
+      </div>
+    </div>
+
+    <div class="thanks-actions">
+      <a class="btn-confirm" href="/#pecas">Voltar para a loja</a>
+      <a class="btn-confirm btn-confirm-secondary" href="/Orders">Acompanhar pedido</a>
+    </div>
+  `;
+}
+
+initThanksPage();
 
 async function initInstagramFeed() {
   const grid = document.getElementById("instagramGrid");

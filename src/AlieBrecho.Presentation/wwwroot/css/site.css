@@ -3107,6 +3107,15 @@ textarea {
   border-color: var(--rose);
 }
 
+.shipping-choice-card.selected[data-delivery-mode="bag"] {
+  background: rgba(138, 158, 140, 0.14);
+  border-color: var(--sage);
+}
+
+.shipping-choice-card.selected[data-delivery-mode="bag"] .shipping-choice-card__title {
+  color: var(--sage);
+}
+
 .shipping-choice-card__title {
   color: var(--dark);
   font-size: 13px;
@@ -3245,6 +3254,18 @@ textarea {
 .payment-method-card.selected {
   background: rgba(196, 120, 106, 0.05);
   border-color: var(--rose);
+}
+
+.payment-method-card__head {
+  align-items: center;
+  display: inline-flex;
+  gap: 10px;
+}
+
+.payment-method-card__icon {
+  display: block;
+  height: 28px;
+  width: 28px;
 }
 
 .payment-method-card__title {
@@ -4154,6 +4175,22 @@ textarea {
   .bag-profile-panel,
   .checkout-form {
     grid-template-columns: 1fr;
+  }
+
+  .progress-bar {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .progress-step {
+    font-size: 9px;
+    gap: 6px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .progress-line {
+    min-width: 18px;
   }
 
   .bag-summary-card {

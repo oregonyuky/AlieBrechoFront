@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AlieBrecho.Application.Abstractions;
 using AlieBrecho.Application.Cart;
 using AlieBrecho.Application.Checkout;
 using AlieBrecho.Domain.Auth;
@@ -9,7 +10,10 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace AlieBrecho.Presentation.Pages.Checkout;
 
-public class IndexModel(CheckoutService checkoutService, CartService cartService) : PageModel
+public class IndexModel(
+    CheckoutService checkoutService,
+    CartService cartService,
+    ICustomerGateway customerGateway) : PageModel
 {
     [BindProperty]
     public CheckoutRequest Input { get; set; } = new();
@@ -23,6 +27,33 @@ public class IndexModel(CheckoutService checkoutService, CartService cartService
         Cart = await cartService.GetCartAsync(cancellationToken);
 
         var authenticatedEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+        var customerId = GetAuthenticatedCustomerId();
+        var customer = string.IsNullOrWhiteSpace(customerId)
+            ? null
+            : await customerGateway.GetCustomerProfileAsync(customerId, cancellationToken);
+
+        if (customer is not null)
+        {
+            Input = new CheckoutRequest
+            {
+                CustomerId = customer.Id ?? customerId,
+                FirstName = customer.FirstName ?? string.Empty,
+                LastName = customer.LastName ?? string.Empty,
+                Cpf = customer.Cpf,
+                Email = FirstFilled(customer.EmailAddress, authenticatedEmail),
+                PhoneNumber = customer.PhoneNumber ?? string.Empty,
+                Street = customer.Street ?? string.Empty,
+                Number = customer.Number ?? string.Empty,
+                Complement = customer.Complement,
+                Neighborhood = customer.Neighborhood ?? string.Empty,
+                City = customer.City ?? string.Empty,
+                State = customer.State ?? string.Empty,
+                PostCode = customer.PostalCode ?? string.Empty
+            };
+
+            return;
+        }
+
         if (!string.IsNullOrWhiteSpace(authenticatedEmail))
         {
             Input = Input with { Email = authenticatedEmail };
@@ -107,5 +138,10 @@ public class IndexModel(CheckoutService checkoutService, CartService cartService
         }
 
         return HttpContext.Session.GetString(AuthSessionKeys.UserId);
+    }
+
+    private static string FirstFilled(params string?[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
     }
 }

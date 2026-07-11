@@ -5,7 +5,7 @@
     var totalPago = Model.Order?.AmountPaid ?? Model.Order?.TotalAmount;
 }
 
-<section class="thanks-shell">
+<section class="thanks-shell" data-thanks-order-id="@Model.Pedido">
     <div class="thanks-panel">
         @if (Model.Order is null)
         {
