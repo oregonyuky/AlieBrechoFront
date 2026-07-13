@@ -105,6 +105,22 @@ app.MapGet("/api/instagram/latest", async (
     var posts = await instagramFeedService.GetLatestPostsAsync(cancellationToken);
     return Results.Ok(posts);
 }).AllowAnonymous();
+app.MapGet("/api/catalog/snapshot", async (
+    string? categoryId,
+    CatalogService catalogService,
+    CancellationToken cancellationToken) =>
+{
+    var catalog = await catalogService.GetCatalogAsync(categoryId, cancellationToken);
+    return Results.Ok(new
+    {
+        productIds = catalog.Products
+            .Select(product => product.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .OrderBy(id => id)
+            .ToArray(),
+        count = catalog.Products.Count
+    });
+}).AllowAnonymous();
 app.MapGet("/api/drop-config/active", async (
     IDropConfigGateway dropConfigGateway,
     CancellationToken cancellationToken) =>

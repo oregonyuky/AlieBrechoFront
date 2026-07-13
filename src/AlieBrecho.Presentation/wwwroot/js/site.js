@@ -1750,3 +1750,84 @@ document.getElementById("copyBtn")?.addEventListener("click", async () => {
     showToast("Nao foi possivel copiar o link.");
   }
 });
+
+function initCatalogNotifications() {
+  const catalogSection = document.getElementById("pecas");
+  if (!catalogSection) {
+    return;
+  }
+
+  const getRenderedSignature = () => Array.from(document.querySelectorAll("[data-product-card-id]"))
+    .map((item) => item.dataset.productCardId)
+    .filter(Boolean)
+    .sort()
+    .join("|");
+
+  let renderedSignature = getRenderedSignature();
+  let refreshTimeout = null;
+  let isReloading = false;
+
+  const scheduleRefresh = () => {
+    if (isReloading) {
+      return;
+    }
+
+    isReloading = true;
+    window.clearTimeout(refreshTimeout);
+    refreshTimeout = window.setTimeout(() => {
+      window.location.reload();
+    }, 350);
+  };
+
+  const connectSignalR = () => {
+    const hubUrl = window.alieBrechoCatalogHubUrl;
+    if (!hubUrl || !window.signalR) {
+      return;
+    }
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl)
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("ProductChanged", scheduleRefresh);
+    connection.start().catch(() => {
+      // A checagem periodica abaixo mantem a vitrine atualizada se o realtime falhar.
+    });
+  };
+
+  const checkCatalogSnapshot = async () => {
+    try {
+      const response = await fetch(`/api/catalog/snapshot${window.location.search}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      const snapshot = await response.json();
+      const nextSignature = Array.isArray(snapshot.productIds)
+        ? snapshot.productIds.filter(Boolean).sort().join("|")
+        : "";
+
+      if (nextSignature !== renderedSignature) {
+        scheduleRefresh();
+        return;
+      }
+
+      if (nextSignature) {
+        renderedSignature = nextSignature;
+      }
+    } catch {
+      // Se a API oscilar, a pagina continua funcionando com os dados renderizados.
+    }
+  };
+
+  connectSignalR();
+  window.setInterval(checkCatalogSnapshot, 5000);
+  checkCatalogSnapshot();
+}
+
+initCatalogNotifications();

@@ -105,7 +105,7 @@
                     ? Math.Round((1 - (product.DisplayPrice / product.OldPrice.Value)) * 100)
                     : 0;
 
-                <article class="product-card reveal">
+                <article class="product-card reveal" data-product-card-id="@product.Id">
                     <a class="product-card__media" asp-page="/Products/Details" asp-route-id="@product.Id">
                         @if (!string.IsNullOrWhiteSpace(product.MainImageUrl))
                         {
