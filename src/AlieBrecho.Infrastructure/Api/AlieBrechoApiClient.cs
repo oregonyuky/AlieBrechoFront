@@ -361,7 +361,22 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             await EnsureSuccessAsync(response, cancellationToken);
 
             var result = await ReadWrappedAsync<BagSummaryDto>(response, cancellationToken);
-            return result.Data is null ? null : MapBagSummary(result.Data);
+            if (result.Data is null)
+            {
+                return null;
+            }
+
+            var summary = MapBagSummary(result.Data);
+            if (summary.Items.Count > 0 || string.IsNullOrWhiteSpace(summary.Id))
+            {
+                return summary;
+            }
+
+            var detailPath = _options.BagDetailPathTemplate.Replace(
+                "{id}",
+                Uri.EscapeDataString(summary.Id));
+            var detail = await GetWrappedAsync<BagSummaryDto>(detailPath, cancellationToken);
+            return MapBagSummary(detail);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -437,6 +452,20 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
                 ? "Pix"
                 : order.Payment.PaymentDetail.PaymentMethod);
+    }
+
+    public async Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(
+        string orderId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(orderId))
+        {
+            return [];
+        }
+
+        var path = _options.OrderDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(orderId));
+        var order = await GetWrappedAsync<OrderSummaryDto>(path, cancellationToken);
+        return MapBagItems(order.OrderDetails.Count > 0 ? order.OrderDetails : order.Items);
     }
 
     private async Task<string?> SaveCustomerFromCheckoutAsync(
@@ -877,8 +906,14 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         };
     }
 
-    private static BagSummary MapBagSummary(BagSummaryDto dto)
+    private BagSummary MapBagSummary(BagSummaryDto dto)
     {
+        var items = dto.Items.Count > 0
+            ? dto.Items
+            : dto.BagItems.Count > 0
+                ? dto.BagItems
+                : dto.OrderDetails;
+
         return new BagSummary
         {
             Id = dto.Id,
@@ -886,8 +921,21 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             ExpirationDate = dto.ExpirationDate,
             TotalItemsValue = dto.TotalItemsValue,
             ShippingCost = dto.ShippingCost,
-            ItemCount = dto.ItemCount
+            ItemCount = dto.ItemCount,
+            Items = MapBagItems(items)
         };
+    }
+
+    private IReadOnlyList<BagItemSummary> MapBagItems(IEnumerable<BagItemSummaryDto> items)
+    {
+        return items.Select(item => new BagItemSummary
+        {
+            ProductId = item.ProductId ?? item.Product?.Id,
+            Name = item.Name ?? item.ProductName ?? item.Product?.Name ?? "Produto",
+            ImageUrl = ResolveImageUrl(item.ProductImageUrl ?? item.ImageUrl ?? item.MainImageUrl ?? item.Product?.MainImageUrl),
+            Quantity = item.Quantity > 0 ? item.Quantity : 1,
+            UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m
+        }).ToArray();
     }
 
     private static string? BuildQrImage(string? qrCodeBase64)
@@ -1064,6 +1112,23 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public decimal TotalItemsValue { get; init; }
         public decimal? ShippingCost { get; init; }
         public int ItemCount { get; init; }
+        public List<BagItemSummaryDto> Items { get; init; } = [];
+        public List<BagItemSummaryDto> BagItems { get; init; } = [];
+        public List<BagItemSummaryDto> OrderDetails { get; init; } = [];
+    }
+
+    private sealed record BagItemSummaryDto
+    {
+        public string? ProductId { get; init; }
+        public string? Name { get; init; }
+        public string? ProductName { get; init; }
+        public string? ImageUrl { get; init; }
+        public string? ProductImageUrl { get; init; }
+        public string? MainImageUrl { get; init; }
+        public int Quantity { get; init; }
+        public decimal? UnitPrice { get; init; }
+        public decimal? Price { get; init; }
+        public ProductDto? Product { get; init; }
     }
 
     private sealed record FinalizeBagPayload
@@ -1113,6 +1178,8 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public decimal? TotalAmount { get; init; }
         public decimal? ShippingCost { get; init; }
         public OrderPaymentSummaryDto? Payment { get; init; }
+        public List<BagItemSummaryDto> OrderDetails { get; init; } = [];
+        public List<BagItemSummaryDto> Items { get; init; } = [];
     }
 
     private sealed record OrderPaymentSummaryDto

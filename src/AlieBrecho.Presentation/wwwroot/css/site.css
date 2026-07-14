@@ -4280,3 +4280,46 @@ textarea {
     padding: 48px 20px 24px;
   }
 }
+.purchases-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.purchase-card {
+  background: #fff;
+  border: 1px solid rgba(47, 42, 38, 0.12);
+  padding: 1.25rem;
+}
+
+.purchase-card__header,
+.purchase-card__footer {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+}
+
+.purchase-card__header {
+  border-bottom: 1px solid rgba(47, 42, 38, 0.1);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.purchase-card__header strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.purchase-card__footer {
+  border-top: 1px solid rgba(47, 42, 38, 0.1);
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+}
+
+@media (max-width: 600px) {
+  .purchase-card__header,
+  .purchase-card__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

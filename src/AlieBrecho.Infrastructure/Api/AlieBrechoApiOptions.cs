@@ -17,6 +17,7 @@ public sealed class AlieBrechoApiOptions
     public string OrderDetailPathTemplate { get; init; } = "api/Order/GetOrderSingle?id={id}";
     public string BagCheckoutPath { get; init; } = "api/Bag/CheckoutBag";
     public string ActiveBagPathTemplate { get; init; } = "api/Bag/GetActiveBag?customerId={customerId}";
+    public string BagDetailPathTemplate { get; init; } = "api/Bag/GetBagSingle?id={id}";
     public string FinalizeBagPath { get; init; } = "api/Bag/FinalizeBag";
     public string MercadoPagoPixPaymentPath { get; init; } = "api/pix/criar-pagamento";
     public string MercadoPagoPixStatusPathTemplate { get; init; } = "api/pix/status/{paymentId}";

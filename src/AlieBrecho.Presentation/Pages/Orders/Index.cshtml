@@ -2,17 +2,19 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @{
-    ViewData["Title"] = "Meus pedidos";
+    ViewData["Title"] = "Minhas Compras";
 }
 
 <section class="account-shell">
     <div class="account-page-header">
-        <span class="eyebrow">Meus pedidos</span>
-        <h1>Pedidos em <em>andamento</em></h1>
+        <span class="eyebrow">Sua conta</span>
+        <h1>Minhas <em>Compras</em></h1>
     </div>
 
-    <div class="account-panel">
-        <p class="account-empty">Quando voce finalizar uma compra, seus pedidos ficarao disponiveis aqui.</p>
+    <div class="account-panel" id="purchasesEmpty" hidden>
+        <p class="account-empty">Quando voce iniciar uma compra, seus pedidos ficarao disponiveis aqui.</p>
         <a class="button" asp-page="/Index" asp-fragment="pecas">Continuar comprando</a>
     </div>
+
+    <div class="purchases-list" id="purchasesList" aria-live="polite"></div>
 </section>

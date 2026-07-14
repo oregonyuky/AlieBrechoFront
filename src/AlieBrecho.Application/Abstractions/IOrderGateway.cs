@@ -1,4 +1,5 @@
 using AlieBrecho.Domain.Orders;
+using AlieBrecho.Domain.Bags;
 
 namespace AlieBrecho.Application.Abstractions;
 
@@ -19,6 +20,10 @@ public interface IOrderGateway
         CancellationToken cancellationToken);
 
     Task<OrderSummary?> GetOrderSummaryAsync(
+        string orderId,
+        CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(
         string orderId,
         CancellationToken cancellationToken);
 }

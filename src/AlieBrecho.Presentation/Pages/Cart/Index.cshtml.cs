@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace AlieBrecho.Presentation.Pages.Cart;
 
-public class IndexModel(CartService cartService, IBagGateway bagGateway) : PageModel
+public class IndexModel(CartService cartService, IBagGateway bagGateway, IOrderGateway orderGateway) : PageModel
 {
     public Domain.Orders.Cart Cart { get; private set; } = new([]);
     public BagSummary? ActiveBag { get; private set; }
@@ -95,9 +95,27 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway) : PageM
     private async Task<BagSummary?> GetActiveBagAsync(CancellationToken cancellationToken)
     {
         var customerId = GetAuthenticatedCustomerId();
-        return string.IsNullOrWhiteSpace(customerId)
+        var bag = string.IsNullOrWhiteSpace(customerId)
             ? null
             : await bagGateway.GetActiveBagAsync(customerId, cancellationToken);
+
+        if (bag is null || bag.Items.Count > 0 || string.IsNullOrWhiteSpace(bag.Id))
+        {
+            return bag;
+        }
+
+        try
+        {
+            return bag with { Items = await orderGateway.GetOrderItemsAsync(bag.Id, cancellationToken) };
+        }
+        catch (HttpRequestException)
+        {
+            return bag;
+        }
+        catch (InvalidOperationException)
+        {
+            return bag;
+        }
     }
 
     private static object? MapBag(BagSummary? bag)
@@ -117,7 +135,18 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway) : PageM
             totalItemsValue = bag.TotalItemsValue,
             totalItemsValueText = bag.TotalItemsValue.ToString("C"),
             shippingCost = bag.ShippingCost,
-            shippingCostText = bag.ShippingCost?.ToString("C")
+            shippingCostText = bag.ShippingCost?.ToString("C"),
+            items = bag.Items.Select(item => new
+            {
+                productId = item.ProductId,
+                name = item.Name,
+                imageUrl = item.ImageUrl,
+                quantity = item.Quantity,
+                unitPrice = item.UnitPrice,
+                unitPriceText = item.UnitPrice.ToString("C"),
+                total = item.Total,
+                totalText = item.Total.ToString("C")
+            })
         };
     }
 

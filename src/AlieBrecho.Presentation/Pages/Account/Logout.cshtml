@@ -1,2 +1,21 @@
 @page
 @model AlieBrecho.Presentation.Pages.Account.LogoutModel
+@{
+    ViewData["Title"] = "Sair";
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.RedirectUrl))
+{
+    <section class="auth-shell">
+        <div class="auth-panel">
+            <p>Encerrando sua sessao...</p>
+        </div>
+    </section>
+
+    @section Scripts {
+        <script>
+            window.alieBrechoClearUserData();
+            window.location.replace(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RedirectUrl)));
+        </script>
+    }
+}

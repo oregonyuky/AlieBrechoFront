@@ -64,6 +64,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                     context.HttpContext.Session.Remove(AuthSessionKeys.AccessToken);
                     context.HttpContext.Session.Remove(AuthSessionKeys.RefreshToken);
                     context.HttpContext.Session.Remove(AuthSessionKeys.UserId);
+                    context.HttpContext.Session.Remove(SessionCartStore.SessionKey);
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 }

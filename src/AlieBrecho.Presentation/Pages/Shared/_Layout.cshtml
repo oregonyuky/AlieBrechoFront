@@ -96,7 +96,7 @@
                 </svg>
                 Finalizar sacolinha agora
             </button>
-            <a class="btn-checkout" asp-page="/Orders/Index">Ver todos os pedidos</a>
+            <a class="btn-checkout" asp-page="/Orders/Index">Minhas Compras</a>
         </div>
     </aside>
 
@@ -116,7 +116,7 @@
             @if (User.Identity?.IsAuthenticated == true)
             {
                 <a class="mobile-menu__link-button" asp-page="/Account/Index">Minha conta</a>
-                <a class="mobile-menu__link-button" asp-page="/Orders/Index">Meus pedidos</a>
+                <a class="mobile-menu__link-button" asp-page="/Orders/Index">Minhas Compras</a>
                 <form method="post" asp-page="/Account/Logout">
                     <button class="mobile-menu__enter" type="submit">Sair</button>
                 </form>
@@ -198,7 +198,7 @@
                         @if (isAuthenticated)
                         {
                             <a role="menuitem" asp-page="/Account/Index">Minha conta</a>
-                            <a role="menuitem" asp-page="/Orders/Index">Meus pedidos</a>
+                            <a role="menuitem" asp-page="/Orders/Index">Minhas Compras</a>
                             <form method="post" asp-page="/Account/Logout">
                                 <button role="menuitem" type="submit">Sair</button>
                             </form>

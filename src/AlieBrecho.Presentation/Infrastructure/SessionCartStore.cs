@@ -5,7 +5,7 @@ namespace AlieBrecho.Presentation.Infrastructure;
 
 public sealed class SessionCartStore(IHttpContextAccessor httpContextAccessor) : ICartStore
 {
-    private const string SessionKey = "aliebrecho.cart";
+    public const string SessionKey = "aliebrecho.cart";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public Task<IReadOnlyDictionary<string, int>> GetItemsAsync(CancellationToken cancellationToken)

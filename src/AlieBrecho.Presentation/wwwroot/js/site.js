@@ -114,6 +114,7 @@ const finalizeBagBtn = document.getElementById("finalizeBagBtn");
 const token = document.querySelector("meta[name='request-verification-token']")?.content;
 let currentCartSubtotal = 0;
 let currentActiveBagId = "";
+let currentActiveBagItemCount = 0;
 
 function syncDrawerBodyScroll() {
   const hasOpenPanel = Boolean(
@@ -144,7 +145,6 @@ function closeCart() {
 function openBag() {
   closeCart();
   closeAccountMenu();
-  renderPaidOrders();
   setDrawerOpen(bagDrawer, bagOverlay, true);
 }
 
@@ -180,7 +180,7 @@ function readSessionJson(key) {
   }
 }
 
-function getStoredOrders() {
+function getStoredPurchases() {
   const orders = [];
 
   try {
@@ -191,8 +191,7 @@ function getStoredOrders() {
       }
 
       const order = readSessionJson(key);
-      const isBagOrder = order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
-      if (order?.orderId && isBagOrder) {
+      if (order?.orderId) {
         orders.push(order);
       }
     }
@@ -203,12 +202,50 @@ function getStoredOrders() {
   return orders.sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0));
 }
 
+function getStoredOrders() {
+  return getStoredPurchases().filter((order) =>
+    order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha");
+}
+
+function isPaidStatus(status) {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "");
+
+  return ["paid", "pago", "approved", "aprovado", "paymentconfirmed", "pagamentoconfirmado"]
+    .includes(normalized);
+}
+
+function isPendingStatus(status) {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "");
+
+  return ["pending", "pendente", "paymentstarted", "pagamentoiniciado", "waitingpayment", "aguardandopagamento"]
+    .includes(normalized);
+}
+
+function getOrderStatus(order) {
+  return order?.status || order?.paymentStatus || order?.orderStatus || "pending";
+}
+
 function updateBagBadge() {
   if (!bagBadge) {
     return;
   }
 
-  bagBadge.textContent = getStoredOrders().length;
+  const storedItemCount = getStoredOrders().filter((order) => isPaidStatus(getOrderStatus(order))).reduce((total, order) => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    return total + items.reduce((subtotal, item) => subtotal + (Number(item.quantity) || 1), 0);
+  }, 0);
+
+  bagBadge.textContent = Math.max(currentActiveBagItemCount, storedItemCount);
 }
 
 function markStoredOrderAsPaid(orderId) {
@@ -269,7 +306,7 @@ function renderPaidOrders() {
     return;
   }
 
-  const orders = getStoredOrders();
+  const orders = getStoredOrders().filter((order) => isPaidStatus(getOrderStatus(order)));
   if (!orders.length) {
     bagBody.innerHTML = "";
     bagBody.appendChild(bagEmpty);
@@ -392,12 +429,59 @@ function renderActiveBag(activeBag) {
     return;
   }
 
-  if (!activeBag?.id) {
+  if (!activeBag?.id || !isPaidStatus(activeBag.status)) {
+    currentActiveBagItemCount = 0;
     cartBagPanel.hidden = true;
+    updateBagBadge();
     return;
   }
 
   cartBagPanel.hidden = false;
+  currentActiveBagItemCount = Number(activeBag.itemCount || activeBag.items?.length || 0);
+  updateBagBadge();
+
+  if (bagBody) {
+    bagBody.querySelector("[data-active-bag]")?.remove();
+
+    const activeBagBlock = document.createElement("div");
+    activeBagBlock.className = "bag-order";
+    activeBagBlock.dataset.activeBag = activeBag.id;
+    activeBagBlock.innerHTML = `
+      <div class="bag-order__meta">
+        <span>Sacolinha ${escapeHtml(activeBag.id)}</span>
+        <span class="bag-order__status">${escapeHtml(activeBag.status || "Em andamento")}</span>
+        <span>${Number(activeBag.itemCount || 0)} ${Number(activeBag.itemCount || 0) === 1 ? "peca" : "pecas"}</span>
+      </div>
+      ${(activeBag.items || []).map((item) => {
+        const name = escapeHtml(item.name || "Produto");
+        const imageUrl = escapeHtml(item.imageUrl || "");
+        return `
+          <div class="cart-item">
+            <div class="cart-item__img">
+              ${item.imageUrl ? `<img src="${imageUrl}" alt="${name}">` : `<span>${name}</span>`}
+            </div>
+            <div class="cart-item__info">
+              <div class="cart-item__name">${name}</div>
+              <div class="cart-item__qty-row">
+                <span class="qty-val">${Number(item.quantity || 1)} unidade</span>
+              </div>
+            </div>
+            <div class="cart-item__price">${escapeHtml(item.totalText || item.unitPriceText || "")}</div>
+          </div>
+        `;
+      }).join("")}
+      <div class="cart-item__info">
+        <strong>Total: ${escapeHtml(activeBag.totalItemsValueText || "")}</strong>
+        <span>Prazo: ${escapeHtml(activeBag.expirationDateText || "a confirmar")}</span>
+      </div>
+    `;
+
+    if (bagEmpty?.parentNode === bagBody) {
+      bagEmpty.remove();
+    }
+    bagBody.prepend(activeBagBlock);
+  }
+
   if (cartBagCount) {
     const itemCount = Number(activeBag.itemCount || 0);
     cartBagCount.textContent = `${itemCount} ${itemCount === 1 ? "peca" : "pecas"}`;
@@ -405,6 +489,60 @@ function renderActiveBag(activeBag) {
   if (cartBagDeadline) {
     cartBagDeadline.textContent = `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;
   }
+}
+
+function renderPurchasesPage() {
+  const list = document.getElementById("purchasesList");
+  const empty = document.getElementById("purchasesEmpty");
+  if (!list) {
+    return;
+  }
+
+  const orders = getStoredPurchases();
+  list.innerHTML = "";
+  if (!orders.length) {
+    if (empty) empty.hidden = false;
+    return;
+  }
+
+  if (empty) empty.hidden = true;
+  orders.forEach((order) => {
+    const orderId = String(order.orderId || "");
+    const statusValue = getOrderStatus(order);
+    const paid = isPaidStatus(statusValue);
+    const pixData = orderId ? readSessionJson(`aliebrecho:pix:${orderId}`) : null;
+    const canResumePayment = !paid && isPendingStatus(statusValue) && Boolean(pixData?.pixQrCode || pixData?.pixCode);
+    const items = Array.isArray(order.items) ? order.items : [];
+    const card = document.createElement("article");
+    card.className = "purchase-card";
+    card.innerHTML = `
+      <div class="purchase-card__header">
+        <div>
+          <span class="eyebrow">Pedido</span>
+          <strong>${escapeHtml(orderId)}</strong>
+        </div>
+        <span class="bag-order__status">${escapeHtml(order.statusText || (paid ? "Pago" : "Pagamento iniciado"))}</span>
+      </div>
+      <div class="purchase-card__items">
+        ${items.map((item) => `
+          <div class="cart-item">
+            <div class="cart-item__img">${item.image ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name || "Produto")}">` : `<span>${escapeHtml(item.name || "Produto")}</span>`}</div>
+            <div class="cart-item__info">
+              <div class="cart-item__name">${escapeHtml(item.name || "Produto")}</div>
+              <div class="cart-item__size">${escapeHtml(item.variant || "Tamanho unico")}</div>
+              <span class="qty-val">${Number(item.quantity) || 1} unidade</span>
+            </div>
+            <div class="cart-item__price">${escapeHtml(item.price || "")}</div>
+          </div>
+        `).join("")}
+      </div>
+      <div class="purchase-card__footer">
+        <strong>${escapeHtml(order.totals?.total || "")}</strong>
+        ${canResumePayment ? `<a class="button" href="/Payment/Pix/${encodeURIComponent(orderId)}">Finalizar pagamento</a>` : ""}
+      </div>
+    `;
+    list.appendChild(card);
+  });
 }
 
 async function handleBagChanged(event) {
@@ -483,7 +621,8 @@ function calculateShipping() {
 
 async function fetchCart() {
   const response = await fetch("/Cart?handler=Summary", {
-    headers: { Accept: "application/json" }
+    headers: { Accept: "application/json" },
+    cache: "no-store"
   });
 
   if (!response.ok) {
@@ -558,6 +697,7 @@ cartBtn?.addEventListener("click", async () => {
 cartClose?.addEventListener("click", closeCart);
 cartOverlay?.addEventListener("click", closeCart);
 bagBtn?.addEventListener("click", async () => {
+  renderPaidOrders();
   try {
     await fetchCart();
   } catch {
@@ -1903,3 +2043,18 @@ function initBagNotifications() {
 
 initCatalogNotifications();
 initBagNotifications();
+renderPurchasesPage();
+window.alieBrechoClearUserData = function () {
+  const sensitiveSessionKeys = [];
+
+  for (let index = 0; index < sessionStorage.length; index += 1) {
+    const key = sessionStorage.key(index);
+    if (key === "aliebrecho:lastOrderId" ||
+        key?.startsWith("aliebrecho:order-confirm:") ||
+        key?.startsWith("aliebrecho:pix:")) {
+      sensitiveSessionKeys.push(key);
+    }
+  }
+
+  sensitiveSessionKeys.forEach((key) => sessionStorage.removeItem(key));
+};
