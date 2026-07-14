@@ -233,6 +233,35 @@ function markStoredOrderAsPaid(orderId) {
   }
 }
 
+function removeStoredBagOrder(bagId) {
+  if (!bagId) {
+    return false;
+  }
+
+  const keysToRemove = [];
+  try {
+    for (let index = 0; index < sessionStorage.length; index += 1) {
+      const key = sessionStorage.key(index);
+      if (!key?.startsWith("aliebrecho:order-confirm:")) {
+        continue;
+      }
+
+      const order = readSessionJson(key);
+      const orderId = order?.orderId || key.replace("aliebrecho:order-confirm:", "");
+      const isBagOrder = order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
+      if (isBagOrder && orderId === bagId) {
+        keysToRemove.push(key, `aliebrecho:pix:${orderId}`);
+      }
+    }
+
+    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    return false;
+  }
+
+  return keysToRemove.length > 0;
+}
+
 function renderPaidOrders() {
   updateBagBadge();
 
@@ -375,6 +404,29 @@ function renderActiveBag(activeBag) {
   }
   if (cartBagDeadline) {
     cartBagDeadline.textContent = `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;
+  }
+}
+
+async function handleBagChanged(event) {
+  const bagId = event?.bagId || event?.id || "";
+  const changeType = String(event?.changeType || "").toLowerCase();
+  const isDeleted = event?.isDeleted === true || changeType === "deleted";
+
+  if (!isDeleted) {
+    return;
+  }
+
+  const removedLocalOrder = removeStoredBagOrder(bagId);
+  if (!bagId || currentActiveBagId === bagId) {
+    currentActiveBagId = "";
+    renderActiveBag(null);
+  }
+
+  renderPaidOrders();
+  await fetchCart().catch(() => {});
+
+  if (removedLocalOrder || bagId) {
+    showToast("Sacolinha atualizada.");
   }
 }
 
@@ -1758,7 +1810,7 @@ function initCatalogNotifications() {
   }
 
   const getRenderedSignature = () => Array.from(document.querySelectorAll("[data-product-card-id]"))
-    .map((item) => item.dataset.productCardId)
+    .map((item) => item.dataset.productCardSignature || item.dataset.productCardId)
     .filter(Boolean)
     .sort()
     .join("|");
@@ -1786,7 +1838,7 @@ function initCatalogNotifications() {
     }
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl)
+      .withUrl(hubUrl, { withCredentials: false })
       .withAutomaticReconnect()
       .build();
 
@@ -1808,9 +1860,11 @@ function initCatalogNotifications() {
       }
 
       const snapshot = await response.json();
-      const nextSignature = Array.isArray(snapshot.productIds)
-        ? snapshot.productIds.filter(Boolean).sort().join("|")
-        : "";
+      const nextSignature = typeof snapshot.signature === "string"
+        ? snapshot.signature
+        : Array.isArray(snapshot.productIds)
+          ? snapshot.productIds.filter(Boolean).sort().join("|")
+          : "";
 
       if (nextSignature !== renderedSignature) {
         scheduleRefresh();
@@ -1830,4 +1884,22 @@ function initCatalogNotifications() {
   checkCatalogSnapshot();
 }
 
+function initBagNotifications() {
+  const hubUrl = window.alieBrechoOrdersHubUrl;
+  if (!hubUrl || !window.signalR) {
+    return;
+  }
+
+  const connection = new signalR.HubConnectionBuilder()
+    .withUrl(hubUrl, { withCredentials: false })
+    .withAutomaticReconnect()
+    .build();
+
+  connection.on("BagChanged", handleBagChanged);
+  connection.start().catch(() => {
+    // O carrinho ainda consulta a API quando aberto, mesmo sem realtime.
+  });
+}
+
 initCatalogNotifications();
+initBagNotifications();

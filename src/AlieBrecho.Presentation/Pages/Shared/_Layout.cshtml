@@ -6,6 +6,7 @@
 @inject IOptions<AlieBrechoApiOptions> ApiOptions
 @{
     var catalogHubUrl = new Uri(ApiOptions.Value.BaseUrl, "hubs/catalog");
+    var ordersHubUrl = new Uri(ApiOptions.Value.BaseUrl, "hubs/orders");
 }
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -268,6 +269,7 @@
 
     <script>
         window.alieBrechoCatalogHubUrl = "@catalogHubUrl";
+        window.alieBrechoOrdersHubUrl = "@ordersHubUrl";
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

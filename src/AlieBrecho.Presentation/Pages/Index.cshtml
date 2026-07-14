@@ -105,7 +105,19 @@
                     ? Math.Round((1 - (product.DisplayPrice / product.OldPrice.Value)) * 100)
                     : 0;
 
-                <article class="product-card reveal" data-product-card-id="@product.Id">
+                var productSignature = string.Join(":", new[]
+                {
+                    product.Id ?? string.Empty,
+                    product.DisplayPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+                    product.OldPrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    product.DiscountPercent?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    product.ProductAvailable ? "1" : "0",
+                    product.Name,
+                    product.ShortDescription ?? string.Empty,
+                    product.MainImageUrl ?? string.Empty
+                });
+
+                <article class="product-card reveal" data-product-card-id="@product.Id" data-product-card-signature="@productSignature">
                     <a class="product-card__media" asp-page="/Products/Details" asp-route-id="@product.Id">
                         @if (!string.IsNullOrWhiteSpace(product.MainImageUrl))
                         {

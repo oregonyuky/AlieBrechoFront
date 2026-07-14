@@ -111,13 +111,29 @@ app.MapGet("/api/catalog/snapshot", async (
     CancellationToken cancellationToken) =>
 {
     var catalog = await catalogService.GetCatalogAsync(categoryId, cancellationToken);
+    var productSignatures = catalog.Products
+        .Select(product => new
+        {
+            product.Id,
+            Signature = string.Join(":", [
+                product.Id ?? string.Empty,
+                product.DisplayPrice.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+                product.OldPrice?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                product.DiscountPercent?.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                product.ProductAvailable ? "1" : "0",
+                product.Name,
+                product.ShortDescription ?? string.Empty,
+                product.MainImageUrl ?? string.Empty
+            ])
+        })
+        .Where(product => !string.IsNullOrWhiteSpace(product.Id))
+        .OrderBy(product => product.Id)
+        .ToArray();
+
     return Results.Ok(new
     {
-        productIds = catalog.Products
-            .Select(product => product.Id)
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .OrderBy(id => id)
-            .ToArray(),
+        productIds = productSignatures.Select(product => product.Id).ToArray(),
+        signature = string.Join("|", productSignatures.Select(product => product.Signature)),
         count = catalog.Products.Count
     });
 }).AllowAnonymous();
