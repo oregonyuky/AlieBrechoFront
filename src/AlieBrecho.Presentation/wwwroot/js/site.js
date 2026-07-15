@@ -231,6 +231,18 @@ function isPendingStatus(status) {
     .includes(normalized);
 }
 
+function isExpiredReservationStatus(status) {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "");
+
+  return ["reservationexpired", "reservaexpirada", "expired", "expirado"]
+    .includes(normalized);
+}
+
 function getOrderStatus(order) {
   return order?.status || order?.paymentStatus || order?.orderStatus || "pending";
 }
@@ -429,15 +441,23 @@ function renderActiveBag(activeBag) {
     return;
   }
 
-  if (!activeBag?.id || !isPaidStatus(activeBag.status)) {
+  const activeBagItems = Array.isArray(activeBag?.items) ? activeBag.items : [];
+  const activeBagItemCount = Number(activeBag?.itemCount || 0);
+  const hasActiveBagItems = activeBagItemCount > 0 || activeBagItems.length > 0;
+
+  if (!activeBag?.id || !hasActiveBagItems || isExpiredReservationStatus(activeBag.status)) {
     currentActiveBagItemCount = 0;
     cartBagPanel.hidden = true;
+    bagBody?.querySelector("[data-active-bag]")?.remove();
     updateBagBadge();
     return;
   }
 
   cartBagPanel.hidden = false;
-  currentActiveBagItemCount = Number(activeBag.itemCount || activeBag.items?.length || 0);
+  currentActiveBagItemCount = activeBagItemCount || activeBagItems.reduce(
+    (total, item) => total + (Number(item.quantity) || 1),
+    0
+  );
   updateBagBadge();
 
   if (bagBody) {
@@ -450,9 +470,9 @@ function renderActiveBag(activeBag) {
       <div class="bag-order__meta">
         <span>Sacolinha ${escapeHtml(activeBag.id)}</span>
         <span class="bag-order__status">${escapeHtml(activeBag.status || "Em andamento")}</span>
-        <span>${Number(activeBag.itemCount || 0)} ${Number(activeBag.itemCount || 0) === 1 ? "peca" : "pecas"}</span>
+        <span>${currentActiveBagItemCount} ${currentActiveBagItemCount === 1 ? "peca" : "pecas"}</span>
       </div>
-      ${(activeBag.items || []).map((item) => {
+      ${activeBagItems.map((item) => {
         const name = escapeHtml(item.name || "Produto");
         const imageUrl = escapeHtml(item.imageUrl || "");
         return `
@@ -483,8 +503,7 @@ function renderActiveBag(activeBag) {
   }
 
   if (cartBagCount) {
-    const itemCount = Number(activeBag.itemCount || 0);
-    cartBagCount.textContent = `${itemCount} ${itemCount === 1 ? "peca" : "pecas"}`;
+    cartBagCount.textContent = `${currentActiveBagItemCount} ${currentActiveBagItemCount === 1 ? "peca" : "pecas"}`;
   }
   if (cartBagDeadline) {
     cartBagDeadline.textContent = `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;

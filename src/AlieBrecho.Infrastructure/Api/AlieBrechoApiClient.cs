@@ -914,15 +914,19 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
                 ? dto.BagItems
                 : dto.OrderDetails;
 
+        var mappedItems = MapBagItems(items)
+            .Where(item => item.IsPaid)
+            .ToArray();
+
         return new BagSummary
         {
             Id = dto.Id,
             Status = dto.Status,
             ExpirationDate = dto.ExpirationDate,
-            TotalItemsValue = dto.TotalItemsValue,
+            TotalItemsValue = mappedItems.Sum(item => item.Total),
             ShippingCost = dto.ShippingCost,
-            ItemCount = dto.ItemCount,
-            Items = MapBagItems(items)
+            ItemCount = mappedItems.Sum(item => item.Quantity),
+            Items = mappedItems
         };
     }
 
@@ -934,7 +938,8 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             Name = item.Name ?? item.ProductName ?? item.Product?.Name ?? "Produto",
             ImageUrl = ResolveImageUrl(item.ProductImageUrl ?? item.ImageUrl ?? item.MainImageUrl ?? item.Product?.MainImageUrl),
             Quantity = item.Quantity > 0 ? item.Quantity : 1,
-            UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m
+            UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m,
+            IsPaid = item.IsPaid
         }).ToArray();
     }
 
@@ -1128,6 +1133,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         public int Quantity { get; init; }
         public decimal? UnitPrice { get; init; }
         public decimal? Price { get; init; }
+        public bool IsPaid { get; init; }
         public ProductDto? Product { get; init; }
     }
 

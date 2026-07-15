@@ -18,5 +18,6 @@ public sealed record BagItemSummary
     public string? ImageUrl { get; init; }
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
+    public bool IsPaid { get; init; }
     public decimal Total => UnitPrice * Quantity;
 }
