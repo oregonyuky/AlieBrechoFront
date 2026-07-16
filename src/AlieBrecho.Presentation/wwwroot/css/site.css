@@ -4310,6 +4310,44 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.purchase-card__date {
+  color: rgba(47, 42, 38, 0.68);
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.purchase-card__item-values {
+  display: grid;
+  gap: 0.15rem;
+  margin-left: auto;
+  text-align: right;
+}
+
+.purchase-card__item-values span,
+.purchase-card__totals span span {
+  color: rgba(47, 42, 38, 0.68);
+  font-size: 0.78rem;
+}
+
+.purchase-card__totals {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(100%, 18rem);
+}
+
+.purchase-card__totals > span {
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+}
+
+.purchase-card__grand-total {
+  border-top: 1px solid rgba(47, 42, 38, 0.1);
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+}
+
 .purchase-card__footer {
   border-top: 1px solid rgba(47, 42, 38, 0.1);
   margin-top: 0.75rem;

@@ -40,6 +40,12 @@
                 <span asp-validation-for="Input.Email"></span>
             </label>
 
+            <label class="full" asp-for="Input.Instagram">
+                Instagram
+                <input asp-for="Input.Instagram" autocomplete="off" placeholder="@@seuusuario" />
+                <span asp-validation-for="Input.Instagram"></span>
+            </label>
+
             <label asp-for="Input.Password">
                 Senha
                 <input asp-for="Input.Password" type="password" autocomplete="new-password" />

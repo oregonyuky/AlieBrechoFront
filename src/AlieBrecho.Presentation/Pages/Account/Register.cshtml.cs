@@ -36,6 +36,7 @@ public class RegisterModel(ICustomerGateway customerGateway) : PageModel
             await customerGateway.CreateCustomerForRegistrationAsync(
                 Input.FirstName,
                 Input.LastName,
+                Input.Instagram,
                 Input.Email,
                 Input.Password,
                 Input.ConfirmPassword,
@@ -62,6 +63,9 @@ public class RegisterModel(ICustomerGateway customerGateway) : PageModel
         public string LastName { get; set; } = string.Empty;
 
         public string? CompanyName { get; set; }
+
+        [StringLength(100, ErrorMessage = "O Instagram deve ter no maximo {1} caracteres.")]
+        public string? Instagram { get; set; }
 
         [Required(ErrorMessage = "Informe o e-mail.")]
         [EmailAddress(ErrorMessage = "Informe um e-mail valido.")]

@@ -108,6 +108,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     public async Task CreateCustomerForRegistrationAsync(
         string firstName,
         string lastName,
+        string? instagram,
         string email,
         string password,
         string confirmPassword,
@@ -116,6 +117,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         var payload = new CreateCustomerPayload
         {
             Name = GetFullName(firstName, lastName),
+            Instagram = instagram,
             EmailAddress = email,
             Password = password,
             ConfirmPassword = confirmPassword,
@@ -452,6 +454,30 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
                 ? "Pix"
                 : order.Payment.PaymentDetail.PaymentMethod);
+    }
+
+    public async Task<BagSummary?> GetBagAsync(
+        string bagId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(bagId))
+        {
+            return null;
+        }
+
+        var path = _options.BagDetailPathTemplate.Replace(
+            "{id}",
+            Uri.EscapeDataString(bagId));
+
+        try
+        {
+            var bag = await GetWrappedAsync<BagSummaryDto>(path, cancellationToken);
+            return bag is null ? null : MapBagSummary(bag);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
     }
 
     public async Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(

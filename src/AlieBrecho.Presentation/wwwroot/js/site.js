@@ -180,21 +180,61 @@ function readSessionJson(key) {
   }
 }
 
+function readPurchaseJson(key) {
+  try {
+    const persistent = localStorage.getItem(key);
+    if (persistent) {
+      const purchase = JSON.parse(persistent);
+      return isPurchaseOwnedByCurrentCustomer(purchase) ? purchase : null;
+    }
+
+    const temporary = sessionStorage.getItem(key);
+    if (!temporary) {
+      return null;
+    }
+
+    const purchase = JSON.parse(temporary);
+    if (!isPurchaseOwnedByCurrentCustomer(purchase)) {
+      return null;
+    }
+    localStorage.setItem(key, temporary);
+    return purchase;
+  } catch {
+    return null;
+  }
+}
+
+function getCurrentCustomerId() {
+  return document.querySelector('meta[name="aliebrecho-customer-id"]')?.content?.trim() || "";
+}
+
+function isPurchaseOwnedByCurrentCustomer(purchase) {
+  const customerId = getCurrentCustomerId();
+  return Boolean(customerId && purchase?.customerId && purchase.customerId === customerId);
+}
+
 function getStoredPurchases() {
   const orders = [];
 
   try {
+    const keys = new Set();
+    for (let index = 0; index < localStorage.length; index += 1) {
+      keys.add(localStorage.key(index));
+    }
     for (let index = 0; index < sessionStorage.length; index += 1) {
-      const key = sessionStorage.key(index);
+      keys.add(sessionStorage.key(index));
+    }
+
+    keys.forEach((key) => {
       if (!key?.startsWith("aliebrecho:order-confirm:")) {
-        continue;
+        return;
       }
 
-      const order = readSessionJson(key);
-      if (order?.orderId) {
+      const order = readPurchaseJson(key);
+      if (order?.orderId && isPurchaseOwnedByCurrentCustomer(order)) {
         orders.push(order);
       }
-    }
+    });
   } catch {
     return [];
   }
@@ -266,7 +306,7 @@ function markStoredOrderAsPaid(orderId) {
   }
 
   const key = `aliebrecho:order-confirm:${orderId}`;
-  const order = readSessionJson(key);
+  const order = readPurchaseJson(key);
   if (!order) {
     return;
   }
@@ -275,10 +315,37 @@ function markStoredOrderAsPaid(orderId) {
     order.status = "paid";
     order.statusText = "Pago";
     order.paidAt = new Date().toISOString();
-    sessionStorage.setItem(key, JSON.stringify(order));
+    localStorage.setItem(key, JSON.stringify(order));
     updateBagBadge();
   } catch {
     // Mantem a sacolinha funcional mesmo se o snapshot local estiver invalido.
+  }
+}
+
+function markStoredBagAsFinalized(bagId, result) {
+  if (!bagId) {
+    return false;
+  }
+
+  const key = `aliebrecho:order-confirm:${bagId}`;
+  const order = readPurchaseJson(key);
+  if (!order) {
+    return false;
+  }
+
+  try {
+    order.status = result?.status || "finalized";
+    order.statusText = "Sacolinha finalizada";
+    order.finalizedAt = new Date().toISOString();
+    order.totals = {
+      ...(order.totals || {}),
+      shipping: result?.shippingCostText || order.totals?.shipping || "A confirmar",
+      total: result?.totalAmountText || order.totals?.total || ""
+    };
+    localStorage.setItem(key, JSON.stringify(order));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -289,13 +356,13 @@ function removeStoredBagOrder(bagId) {
 
   const keysToRemove = [];
   try {
-    for (let index = 0; index < sessionStorage.length; index += 1) {
-      const key = sessionStorage.key(index);
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
       if (!key?.startsWith("aliebrecho:order-confirm:")) {
         continue;
       }
 
-      const order = readSessionJson(key);
+      const order = readPurchaseJson(key);
       const orderId = order?.orderId || key.replace("aliebrecho:order-confirm:", "");
       const isBagOrder = order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
       if (isBagOrder && orderId === bagId) {
@@ -303,7 +370,10 @@ function removeStoredBagOrder(bagId) {
       }
     }
 
-    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
   } catch {
     return false;
   }
@@ -510,14 +580,40 @@ function renderActiveBag(activeBag) {
   }
 }
 
-function renderPurchasesPage() {
+async function removeDeletedBagPurchases(orders) {
+  const bagOrders = orders.filter((order) => {
+    const isBagOrder = order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
+    return isBagOrder && order?.orderId;
+  });
+
+  await Promise.all(bagOrders.map(async (order) => {
+    try {
+      const response = await fetch(`/Orders?handler=BagExists&bagId=${encodeURIComponent(order.orderId)}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+      });
+      if (!response.ok) return;
+
+      const result = await response.json();
+      if (result.exists === false) {
+        removeStoredBagOrder(order.orderId);
+      }
+    } catch {
+      // Mantem o historico quando a API estiver temporariamente indisponivel.
+    }
+  }));
+}
+
+async function renderPurchasesPage() {
   const list = document.getElementById("purchasesList");
   const empty = document.getElementById("purchasesEmpty");
   if (!list) {
     return;
   }
 
-  const orders = getStoredPurchases();
+  let orders = getStoredPurchases();
+  await removeDeletedBagPurchases(orders);
+  orders = getStoredPurchases();
   list.innerHTML = "";
   if (!orders.length) {
     if (empty) empty.hidden = false;
@@ -532,6 +628,12 @@ function renderPurchasesPage() {
     const pixData = orderId ? readSessionJson(`aliebrecho:pix:${orderId}`) : null;
     const canResumePayment = !paid && isPendingStatus(statusValue) && Boolean(pixData?.pixQrCode || pixData?.pixCode);
     const items = Array.isArray(order.items) ? order.items : [];
+    const purchaseDateValue = order.finalizedAt || order.paidAt || order.generatedAt;
+    const purchaseDate = purchaseDateValue
+      ? new Date(purchaseDateValue).toLocaleString("pt-BR", {
+          day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"
+        })
+      : "Data nao informada";
     const card = document.createElement("article");
     card.className = "purchase-card";
     card.innerHTML = `
@@ -539,6 +641,7 @@ function renderPurchasesPage() {
         <div>
           <span class="eyebrow">Pedido</span>
           <strong>${escapeHtml(orderId)}</strong>
+          <span class="purchase-card__date">Comprado em ${escapeHtml(purchaseDate)}</span>
         </div>
         <span class="bag-order__status">${escapeHtml(order.statusText || (paid ? "Pago" : "Pagamento iniciado"))}</span>
       </div>
@@ -549,14 +652,21 @@ function renderPurchasesPage() {
             <div class="cart-item__info">
               <div class="cart-item__name">${escapeHtml(item.name || "Produto")}</div>
               <div class="cart-item__size">${escapeHtml(item.variant || "Tamanho unico")}</div>
-              <span class="qty-val">${Number(item.quantity) || 1} unidade</span>
+              <span class="qty-val">${Number(item.quantity) || 1} ${Number(item.quantity) === 1 ? "unidade" : "unidades"}</span>
             </div>
-            <div class="cart-item__price">${escapeHtml(item.price || "")}</div>
+            <div class="purchase-card__item-values">
+              <span>Valor unitario</span>
+              <strong>${escapeHtml(item.price || "--")}</strong>
+            </div>
           </div>
         `).join("")}
       </div>
       <div class="purchase-card__footer">
-        <strong>${escapeHtml(order.totals?.total || "")}</strong>
+        <div class="purchase-card__totals">
+          <span><span>Produtos</span><strong>${escapeHtml(order.totals?.subtotal || "--")}</strong></span>
+          <span><span>Frete</span><strong>${escapeHtml(order.totals?.shipping || "--")}</strong></span>
+          <span class="purchase-card__grand-total"><span>Total</span><strong>${escapeHtml(order.totals?.total || "--")}</strong></span>
+        </div>
         ${canResumePayment ? `<a class="button" href="/Payment/Pix/${encodeURIComponent(orderId)}">Finalizar pagamento</a>` : ""}
       </div>
     `;
@@ -699,6 +809,8 @@ async function finalizeBagNow(bagId) {
     throw new Error(data.message || "Nao foi possivel finalizar a sacolinha.");
   }
 
+  markStoredBagAsFinalized(bagId, data);
+  renderPurchasesPage();
   showToast("Sacolinha finalizada. O frete foi recalculado para envio imediato.");
   await fetchCart().catch(() => {});
   return true;
@@ -737,9 +849,16 @@ finalizeBagBtn?.addEventListener("click", async () => {
 });
 
 document.querySelectorAll("[data-finalize-bag-form]").forEach((form) => {
-  form.addEventListener("submit", (event) => {
-    if (!window.confirm("Finalizar a sacolinha agora? O frete sera recalculado para envio imediato.")) {
-      event.preventDefault();
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const bagId = new FormData(form).get("bagId") || new URL(form.action).searchParams.get("bagId");
+    try {
+      const finalized = await finalizeBagNow(String(bagId || ""));
+      if (finalized) {
+        window.location.href = "/Orders";
+      }
+    } catch (error) {
+      showToast(error.message || "Nao foi possivel finalizar a sacolinha.");
     }
   });
 });
@@ -1057,6 +1176,7 @@ function initCheckoutDynamics() {
 
     const snapshot = {
       orderId,
+      customerId: getCurrentCustomerId(),
       deliveryType: isBagDelivery() ? "bag" : "normal",
       generatedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
@@ -1083,7 +1203,7 @@ function initCheckoutDynamics() {
       items
     };
 
-    sessionStorage.setItem(`aliebrecho:order-confirm:${orderId}`, JSON.stringify(snapshot));
+    localStorage.setItem(`aliebrecho:order-confirm:${orderId}`, JSON.stringify(snapshot));
     updateBagBadge();
   }
 
@@ -1517,7 +1637,7 @@ function initPixPaymentPage() {
   const qrImage = document.getElementById("pixQrImage");
   const qrText = document.getElementById("pixQrText");
   const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
-  const snapshot = orderId ? readSessionJson(`aliebrecho:order-confirm:${orderId}`) : null;
+  const snapshot = orderId ? readPurchaseJson(`aliebrecho:order-confirm:${orderId}`) : null;
   const isBagPayment = snapshot?.deliveryType === "bag" || snapshot?.delivery?.mode === "Sacolinha";
   let pollTimer = null;
 
@@ -1724,7 +1844,7 @@ function initThanksPage() {
     return;
   }
 
-  const snapshot = readSessionJson(`aliebrecho:order-confirm:${orderId}`);
+  const snapshot = readPurchaseJson(`aliebrecho:order-confirm:${orderId}`);
   if (!snapshot) {
     return;
   }

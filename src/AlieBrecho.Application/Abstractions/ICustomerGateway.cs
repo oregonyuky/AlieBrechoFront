@@ -5,6 +5,7 @@ public interface ICustomerGateway
     Task CreateCustomerForRegistrationAsync(
         string firstName,
         string lastName,
+        string? instagram,
         string email,
         string password,
         string confirmPassword,

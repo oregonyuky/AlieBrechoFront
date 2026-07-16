@@ -14,6 +14,10 @@ public interface IBagGateway
         string customerId,
         CancellationToken cancellationToken);
 
+    Task<BagSummary?> GetBagAsync(
+        string bagId,
+        CancellationToken cancellationToken);
+
     Task<BagFinalizeResult?> FinalizeBagAsync(
         string bagId,
         CancellationToken cancellationToken);
