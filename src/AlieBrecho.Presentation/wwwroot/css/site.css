@@ -1308,6 +1308,61 @@ button.button {
   margin: 28px 60px 0;
 }
 
+.catalog-layout {
+  align-items: start;
+  display: grid;
+  gap: 42px;
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+}
+
+.catalog-categories {
+  position: sticky;
+  top: 96px;
+}
+
+.catalog-categories__title {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1;
+  margin: 10px 0 24px;
+}
+
+.catalog-categories__title em {
+  color: var(--rose);
+  font-style: italic;
+}
+
+.catalog-categories__nav {
+  border-top: 1px solid var(--line);
+  display: grid;
+}
+
+.catalog-products[data-loading="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.catalog-category {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding: 13px 2px;
+}
+
+.catalog-category span {
+  color: var(--muted);
+}
+
+.catalog-category.active,
+.catalog-category:hover {
+  color: var(--rose);
+}
+
 .cats-editorial {
   display: grid;
   gap: 4px;
@@ -3868,17 +3923,19 @@ textarea {
 
 .footer__pays {
   display: flex;
-  gap: 8px;
+  gap: 14px;
 }
 
 .pay {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  color: rgba(250, 247, 242, 0.34);
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 1px;
-  padding: 5px 12px;
+  align-items: center;
+  display: inline-flex;
+}
+
+.pay img {
+  display: block;
+  height: 23px;
+  max-width: 56px;
+  object-fit: contain;
 }
 
 .toast {
@@ -3935,6 +3992,34 @@ textarea {
 }
 
 @media (max-width: 1024px) {
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-categories {
+    position: static;
+  }
+
+  .catalog-categories__nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .catalog-category {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    flex: 0 0 auto;
+    padding: 9px 14px;
+  }
+
+  .catalog-category.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
   #navbar {
     padding: 18px 28px;
   }

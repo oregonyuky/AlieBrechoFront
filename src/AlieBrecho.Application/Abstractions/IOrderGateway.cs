@@ -23,6 +23,10 @@ public interface IOrderGateway
         string orderId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<OrderSummary>> GetOrdersByCustomerAsync(
+        string customerId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(
         string orderId,
         CancellationToken cancellationToken);

@@ -242,6 +242,31 @@ function getStoredPurchases() {
   return orders.sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0));
 }
 
+async function getPurchases() {
+  try {
+    const response = await fetch("/Orders?handler=Purchases", {
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+    if (!response.ok) throw new Error("Nao foi possivel carregar os pedidos.");
+
+    const orders = await response.json();
+    return orders.map((order) => ({
+      orderId: order.orderId,
+      statusText: order.status,
+      generatedAt: order.createdAt || order.updatedAt,
+      totals: {
+        subtotal: formatCurrency(Math.max(0, Number(order.totalAmount || 0) - Number(order.shippingCost || 0))),
+        shipping: formatCurrency(Number(order.shippingCost || 0)),
+        total: formatCurrency(Number(order.amountPaid ?? order.totalAmount ?? 0))
+      },
+      items: []
+    }));
+  } catch {
+    return getStoredPurchases();
+  }
+}
+
 function getStoredOrders() {
   return getStoredPurchases().filter((order) =>
     order?.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha");
@@ -292,12 +317,7 @@ function updateBagBadge() {
     return;
   }
 
-  const storedItemCount = getStoredOrders().filter((order) => isPaidStatus(getOrderStatus(order))).reduce((total, order) => {
-    const items = Array.isArray(order.items) ? order.items : [];
-    return total + items.reduce((subtotal, item) => subtotal + (Number(item.quantity) || 1), 0);
-  }, 0);
-
-  bagBadge.textContent = Math.max(currentActiveBagItemCount, storedItemCount);
+  bagBadge.textContent = currentActiveBagItemCount;
 }
 
 function markStoredOrderAsPaid(orderId) {
@@ -611,9 +631,8 @@ async function renderPurchasesPage() {
     return;
   }
 
-  let orders = getStoredPurchases();
+  let orders = await getPurchases();
   await removeDeletedBagPurchases(orders);
-  orders = getStoredPurchases();
   list.innerHTML = "";
   if (!orders.length) {
     if (empty) empty.hidden = false;
@@ -683,16 +702,14 @@ async function handleBagChanged(event) {
     return;
   }
 
-  const removedLocalOrder = removeStoredBagOrder(bagId);
   if (!bagId || currentActiveBagId === bagId) {
     currentActiveBagId = "";
     renderActiveBag(null);
   }
 
-  renderPaidOrders();
   await fetchCart().catch(() => {});
 
-  if (removedLocalOrder || bagId) {
+  if (bagId) {
     showToast("Sacolinha atualizada.");
   }
 }
@@ -828,7 +845,6 @@ cartBtn?.addEventListener("click", async () => {
 cartClose?.addEventListener("click", closeCart);
 cartOverlay?.addEventListener("click", closeCart);
 bagBtn?.addEventListener("click", async () => {
-  renderPaidOrders();
   try {
     await fetchCart();
   } catch {
@@ -891,8 +907,9 @@ cartBody?.addEventListener("click", async (event) => {
   }
 });
 
-document.querySelectorAll("[data-cart-form]").forEach((form) => {
-  form.addEventListener("submit", async (event) => {
+function bindCartForms(root = document) {
+  root.querySelectorAll("[data-cart-form]").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     try {
@@ -913,7 +930,50 @@ document.querySelectorAll("[data-cart-form]").forEach((form) => {
     } catch {
       form.submit();
     }
+    });
   });
+}
+
+bindCartForms();
+
+document.addEventListener("click", async (event) => {
+  const categoryLink = event.target.closest(".catalog-category");
+  if (!categoryLink || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const catalogProducts = document.querySelector(".catalog-products");
+  if (!catalogProducts) {
+    return;
+  }
+
+  event.preventDefault();
+  if (catalogProducts.dataset.loading === "true") {
+    return;
+  }
+
+  try {
+    catalogProducts.dataset.loading = "true";
+    const response = await fetch(categoryLink.href, {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      cache: "no-store"
+    });
+    if (!response.ok) throw new Error("Nao foi possivel carregar a categoria.");
+
+    const page = new DOMParser().parseFromString(await response.text(), "text/html");
+    const nextProducts = page.querySelector(".catalog-products");
+    const nextCategories = page.querySelector(".catalog-categories__nav");
+    if (!nextProducts || !nextCategories) throw new Error("Categoria invalida.");
+
+    catalogProducts.innerHTML = nextProducts.innerHTML;
+    document.querySelector(".catalog-categories__nav")?.replaceWith(nextCategories);
+    bindCartForms(catalogProducts);
+    window.history.pushState({}, "", categoryLink.href);
+  } catch {
+    window.location.href = categoryLink.href;
+  } finally {
+    delete catalogProducts.dataset.loading;
+  }
 });
 
 document.addEventListener("keydown", (event) => {

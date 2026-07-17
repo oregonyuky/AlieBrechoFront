@@ -14,6 +14,7 @@ public sealed class AlieBrechoApiOptions
     public string UpdateCustomerPath { get; init; } = "api/Customer/UpdateCustomer";
     public string CustomerDetailPathTemplate { get; init; } = "api/Customer/GetCustomerSingle?id={id}";
     public string OrdersPath { get; init; } = "api/Order/CreateOrder";
+    public string OrderListPathTemplate { get; init; } = "api/Order/GetOrderList?customerId={customerId}";
     public string OrderDetailPathTemplate { get; init; } = "api/Order/GetOrderSingle?id={id}";
     public string BagCheckoutPath { get; init; } = "api/Bag/CheckoutBag";
     public string ActiveBagPathTemplate { get; init; } = "api/Bag/GetActiveBag?customerId={customerId}";

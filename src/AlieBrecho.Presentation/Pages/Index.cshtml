@@ -54,42 +54,27 @@
         <div class="notice notice-floating">@Model.ErrorMessage</div>
     }
 
-    <section class="section" id="categorias">
-        <div class="section__header reveal">
-            <span class="section__eyebrow">Encontre seu estilo</span>
-            <h2 class="section__title">Explore por<br /><em>categoria</em></h2>
-        </div>
-
-        <div class="cats-editorial">
-            <a class="cat-ed @(Model.Catalog.SelectedCategoryId is null ? "active" : null)" asp-page="/Index">
-                <div class="cat-ed__bg cat-ed__bg--all"></div>
-                <div class="cat-ed__overlay"></div>
-                <div class="cat-ed__content">
-                    <span class="cat-ed__label">Destaque</span>
-                    <div class="cat-ed__title">Todos<br /><em>os garimpos</em></div>
-                    <div class="cat-ed__count">@Model.Catalog.Products.Count pecas</div>
-                    <div class="cat-ed__arrow">Explorar</div>
-                </div>
-            </a>
-            @foreach (var category in Model.Catalog.Categories.Where(category => category.IsActive).Take(4))
-            {
-                <a class="cat-ed @(Model.Catalog.SelectedCategoryId == category.Id ? "active" : null)"
-                   asp-page="/Index"
-                   asp-route-categoryId="@category.Id">
-                    <div class="cat-ed__bg"></div>
-                    <div class="cat-ed__overlay"></div>
-                    <div class="cat-ed__content">
-                        <span class="cat-ed__label">Categoria</span>
-                        <div class="cat-ed__title">@category.Name</div>
-                        <div class="cat-ed__count">Curadoria Alie</div>
-                        <div class="cat-ed__arrow">Ver tudo</div>
-                    </div>
-                </a>
-            }
-        </div>
-    </section>
-
     <section class="section section--alt" id="pecas">
+        <div class="catalog-layout">
+            <aside class="catalog-categories reveal" aria-label="Categorias">
+                <span class="section__eyebrow">Encontre seu estilo</span>
+                <h2 class="catalog-categories__title">Explore por <em>categoria</em></h2>
+                <nav class="catalog-categories__nav">
+                    <a class="catalog-category @(Model.Catalog.SelectedCategoryId is null ? "active" : null)" asp-page="/Index">
+                        Todos os garimpos <span>@Model.Catalog.Products.Count</span>
+                    </a>
+                    @foreach (var category in Model.Catalog.Categories.Where(category => category.IsActive))
+                    {
+                        <a class="catalog-category @(Model.Catalog.SelectedCategoryId == category.Id ? "active" : null)"
+                           asp-page="/Index"
+                           asp-route-categoryId="@category.Id">
+                            @category.Name <span>›</span>
+                        </a>
+                    }
+                </nav>
+            </aside>
+
+            <div class="catalog-products">
         <div class="products-header reveal">
             <div>
                 <span class="section__eyebrow">Em destaque</span>
@@ -161,6 +146,8 @@
                     </div>
                 </article>
             }
+        </div>
+            </div>
         </div>
     </section>
 

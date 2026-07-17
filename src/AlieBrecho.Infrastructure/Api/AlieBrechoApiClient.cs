@@ -456,6 +456,31 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
                 : order.Payment.PaymentDetail.PaymentMethod);
     }
 
+    public async Task<IReadOnlyList<OrderSummary>> GetOrdersByCustomerAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return [];
+        }
+
+        var path = _options.OrderListPathTemplate.Replace(
+            "{customerId}",
+            Uri.EscapeDataString(customerId));
+        var orders = await GetWrappedAsync<List<OrderSummaryDto>>(path, cancellationToken);
+
+        return orders.Select(order => new OrderSummary(
+            order.Id,
+            order.Status,
+            order.TotalAmount,
+            order.ShippingCost,
+            order.Payment?.Amount,
+            string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
+                ? "Pix"
+                : order.Payment.PaymentDetail.PaymentMethod)).ToArray();
+    }
+
     public async Task<BagSummary?> GetBagAsync(
         string bagId,
         CancellationToken cancellationToken)
