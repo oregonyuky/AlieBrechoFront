@@ -1,0 +1,35 @@
+@page
+@{
+    ViewData["Title"] = "Dúvidas Frequentes";
+}
+
+<section class="faq-shell">
+    <div class="contact-heading">
+        <p class="eyebrow">Central de ajuda</p>
+        <h1>Dúvidas <em>Frequentes</em></h1>
+        <p>Respostas rápidas sobre compras, entregas, pagamentos e trocas.</p>
+    </div>
+
+    <div class="faq-list">
+        <details>
+            <summary>Como acompanho meu pedido?</summary>
+            <p>Entre na sua conta e acesse “Minhas Compras” para acompanhar o status do pagamento e da entrega.</p>
+        </details>
+        <details>
+            <summary>Quais formas de pagamento são aceitas?</summary>
+            <p>O checkout informa as opções disponíveis para sua compra. Atualmente, o pagamento instantâneo por Pix é processado com segurança.</p>
+        </details>
+        <details>
+            <summary>Como funciona o envio?</summary>
+            <p>O prazo e o valor são calculados pelo CEP. Depois da postagem, você poderá acompanhar a movimentação do pedido.</p>
+        </details>
+        <details>
+            <summary>Posso trocar ou devolver uma peça?</summary>
+            <p>Sim. Entre em contato informando o número do pedido e o motivo para receber as orientações de troca ou devolução.</p>
+        </details>
+        <details>
+            <summary>Não encontrei minha dúvida. O que faço?</summary>
+            <p>Acesse <a asp-page="/Ajuda/FaleConosco">Fale conosco</a> e envie sua mensagem para a nossa equipe.</p>
+        </details>
+    </div>
+</section>

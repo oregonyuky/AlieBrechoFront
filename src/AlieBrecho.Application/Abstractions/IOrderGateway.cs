@@ -50,4 +50,5 @@ public sealed record OrderSummary(
     decimal? TotalAmount,
     decimal? ShippingCost,
     decimal? AmountPaid,
-    string PaymentMethod);
+    string PaymentMethod,
+    IReadOnlyList<BagItemSummary> Items);

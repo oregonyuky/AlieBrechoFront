@@ -242,6 +242,82 @@ function getStoredPurchases() {
   return orders.sort((a, b) => new Date(b.generatedAt || 0) - new Date(a.generatedAt || 0));
 }
 
+function normalizeStatus(status) {
+  return String(status || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "");
+}
+
+function getStatusLabel(status) {
+  const normalized = normalizeStatus(status);
+  const labels = {
+    paid: "Pago",
+    pago: "Pago",
+    approved: "Pago",
+    aprovado: "Pago",
+    paymentconfirmed: "Pago",
+    pagamentoconfirmado: "Pago",
+    pending: "Pagamento iniciado",
+    pendente: "Pagamento iniciado",
+    paymentstarted: "Pagamento iniciado",
+    pagamentoiniciado: "Pagamento iniciado",
+    waitingpayment: "Aguardando pagamento",
+    aguardandopagamento: "Aguardando pagamento",
+    dispatched: "Despachado",
+    enviadoparaseparacao: "Enviado para separacao",
+    shipped: "A caminho",
+    acaminho: "A caminho",
+    delivered: "Entregue",
+    entregue: "Entregue",
+    cancelled: "Cancelado",
+    canceled: "Cancelado",
+    cancelado: "Cancelado"
+  };
+
+  return labels[normalized] || status || "Pagamento iniciado";
+}
+
+function getStatusClass(status) {
+  const normalized = normalizeStatus(status);
+  if (["cancelled", "canceled", "cancelado"].includes(normalized)) {
+    return "bag-order__status--cancelled";
+  }
+  if (["dispatched", "enviadoparaseparacao", "shipped", "acaminho"].includes(normalized)) {
+    return "bag-order__status--shipping";
+  }
+  if (["delivered", "entregue"].includes(normalized)) {
+    return "bag-order__status--delivered";
+  }
+  if (isPendingStatus(status)) {
+    return "bag-order__status--pending";
+  }
+
+  return "bag-order__status--paid";
+}
+
+function mapPurchaseItems(order) {
+  const items = Array.isArray(order?.items) && order.items.length
+    ? order.items
+    : Array.isArray(order?.orderDetails)
+      ? order.orderDetails
+      : [];
+
+  return items.map((item) => {
+    const quantity = Number(item.quantity) || 1;
+    const unitPrice = Number(item.unitPrice ?? item.price ?? item.product?.unitPrice ?? 0);
+    return {
+      name: item.name || item.productName || item.product?.name || "Produto",
+      variant: item.variant || item.size || item.product?.size || "Tamanho unico",
+      price: item.priceText || item.unitPriceText || formatCurrency(unitPrice),
+      image: item.image || item.imageUrl || item.productImageUrl || item.mainImageUrl || item.product?.mainImageUrl || "",
+      quantity
+    };
+  });
+}
+
 async function getPurchases() {
   try {
     const response = await fetch("/Orders?handler=Purchases", {
@@ -253,14 +329,15 @@ async function getPurchases() {
     const orders = await response.json();
     return orders.map((order) => ({
       orderId: order.orderId,
-      statusText: order.status,
+      status: order.status,
+      statusText: getStatusLabel(order.status),
       generatedAt: order.createdAt || order.updatedAt,
       totals: {
         subtotal: formatCurrency(Math.max(0, Number(order.totalAmount || 0) - Number(order.shippingCost || 0))),
         shipping: formatCurrency(Number(order.shippingCost || 0)),
         total: formatCurrency(Number(order.amountPaid ?? order.totalAmount ?? 0))
       },
-      items: []
+      items: mapPurchaseItems(order)
     }));
   } catch {
     return getStoredPurchases();
@@ -273,36 +350,21 @@ function getStoredOrders() {
 }
 
 function isPaidStatus(status) {
-  const normalized = String(status || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\s_-]+/g, "");
+  const normalized = normalizeStatus(status);
 
   return ["paid", "pago", "approved", "aprovado", "paymentconfirmed", "pagamentoconfirmado"]
     .includes(normalized);
 }
 
 function isPendingStatus(status) {
-  const normalized = String(status || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\s_-]+/g, "");
+  const normalized = normalizeStatus(status);
 
   return ["pending", "pendente", "paymentstarted", "pagamentoiniciado", "waitingpayment", "aguardandopagamento"]
     .includes(normalized);
 }
 
 function isExpiredReservationStatus(status) {
-  const normalized = String(status || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[\s_-]+/g, "");
+  const normalized = normalizeStatus(status);
 
   return ["reservationexpired", "reservaexpirada", "expired", "expirado"]
     .includes(normalized);
@@ -644,6 +706,8 @@ async function renderPurchasesPage() {
     const orderId = String(order.orderId || "");
     const statusValue = getOrderStatus(order);
     const paid = isPaidStatus(statusValue);
+    const statusText = order.statusText || getStatusLabel(statusValue);
+    const statusClass = getStatusClass(statusValue);
     const pixData = orderId ? readSessionJson(`aliebrecho:pix:${orderId}`) : null;
     const canResumePayment = !paid && isPendingStatus(statusValue) && Boolean(pixData?.pixQrCode || pixData?.pixCode);
     const items = Array.isArray(order.items) ? order.items : [];
@@ -662,7 +726,7 @@ async function renderPurchasesPage() {
           <strong>${escapeHtml(orderId)}</strong>
           <span class="purchase-card__date">Comprado em ${escapeHtml(purchaseDate)}</span>
         </div>
-        <span class="bag-order__status">${escapeHtml(order.statusText || (paid ? "Pago" : "Pagamento iniciado"))}</span>
+        <span class="bag-order__status ${statusClass}">${escapeHtml(statusText)}</span>
       </div>
       <div class="purchase-card__items">
         ${items.map((item) => `

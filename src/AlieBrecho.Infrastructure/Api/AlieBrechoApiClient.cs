@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using AlieBrecho.Application.Abstractions;
 using AlieBrecho.Domain.Auth;
 using AlieBrecho.Domain.Bags;
+using AlieBrecho.Domain.Contact;
 using AlieBrecho.Domain.Marketing;
 using AlieBrecho.Domain.Orders;
 using AlieBrecho.Domain.Products;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Options;
 namespace AlieBrecho.Infrastructure.Api;
 
 internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
-    : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway
+    : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway, IContactMessageGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -22,6 +23,17 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     };
 
     private readonly AlieBrechoApiOptions _options = options.Value;
+
+    public async Task SendAsync(ContactMessageRequest request, CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.ContactMessagesPath,
+            request,
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
 
     public async Task<LoginSession?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
@@ -445,15 +457,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         var path = _options.OrderDetailPathTemplate.Replace("{id}", Uri.EscapeDataString(orderId));
 
         var order = await GetWrappedAsync<OrderSummaryDto>(path, cancellationToken);
-        return new OrderSummary(
-            order.Id,
-            order.Status,
-            order.TotalAmount,
-            order.ShippingCost,
-            order.Payment?.Amount,
-            string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
-                ? "Pix"
-                : order.Payment.PaymentDetail.PaymentMethod);
+        return MapOrderSummary(order);
     }
 
     public async Task<IReadOnlyList<OrderSummary>> GetOrdersByCustomerAsync(
@@ -470,15 +474,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             Uri.EscapeDataString(customerId));
         var orders = await GetWrappedAsync<List<OrderSummaryDto>>(path, cancellationToken);
 
-        return orders.Select(order => new OrderSummary(
-            order.Id,
-            order.Status,
-            order.TotalAmount,
-            order.ShippingCost,
-            order.Payment?.Amount,
-            string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
-                ? "Pix"
-                : order.Payment.PaymentDetail.PaymentMethod)).ToArray();
+        return orders.Select(MapOrderSummary).ToArray();
     }
 
     public async Task<BagSummary?> GetBagAsync(
@@ -992,6 +988,24 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
             UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m,
             IsPaid = item.IsPaid
         }).ToArray();
+    }
+
+    private OrderSummary MapOrderSummary(OrderSummaryDto order)
+    {
+        var items = order.Items.Count > 0
+            ? order.Items
+            : order.OrderDetails;
+
+        return new OrderSummary(
+            order.Id,
+            order.Status,
+            order.TotalAmount,
+            order.ShippingCost,
+            order.Payment?.Amount,
+            string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
+                ? "Pix"
+                : order.Payment.PaymentDetail.PaymentMethod,
+            MapBagItems(items));
     }
 
     private static string? BuildQrImage(string? qrCodeBase64)

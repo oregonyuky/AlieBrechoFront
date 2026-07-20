@@ -21,6 +21,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/");
     options.Conventions.AllowAnonymousToPage("/Index");
     options.Conventions.AllowAnonymousToPage("/Privacy");
+    options.Conventions.AllowAnonymousToFolder("/Ajuda");
     options.Conventions.AllowAnonymousToFolder("/Products");
     options.Conventions.AllowAnonymousToFolder("/Cart");
     options.Conventions.AllowAnonymousToPage("/Account/Login");
