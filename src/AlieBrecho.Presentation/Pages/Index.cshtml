@@ -28,7 +28,14 @@
             <div class="hero__flowers">Alie</div>
             <div class="hero__img-frame">
                 <div class="hero__img-card">
-                    <div class="hero__img-art">AB</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.HeroImageUrl))
+                    {
+                        <img class="hero__configured-image" src="@Model.HeroImageUrl" alt="Destaque Alie Brechó" />
+                    }
+                    else
+                    {
+                        <div class="hero__img-art">AB</div>
+                    }
                     <div class="hero__img-label">Drop Primavera</div>
                 </div>
                 <div class="hero__img-badge">

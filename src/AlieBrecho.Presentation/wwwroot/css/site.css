@@ -212,6 +212,13 @@ main {
   text-decoration: none;
 }
 
+.cart-nav-icon {
+  display: block;
+  height: 22px;
+  object-fit: contain;
+  width: 22px;
+}
+
 .cart-nav-button:focus-visible {
   outline: 2px solid var(--rose);
   outline-offset: 3px;
@@ -2299,7 +2306,25 @@ button.button {
 .share-btn {
   cursor: pointer;
   font: inherit;
+  justify-content: center;
+  min-width: 42px;
+  padding: 0;
   transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.hero__configured-image {
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  position: absolute;
+  width: 100%;
+}
+
+.share-btn img {
+  display: block;
+  height: 20px;
+  object-fit: contain;
+  width: 20px;
 }
 
 .share-btn:hover {
@@ -2725,6 +2750,28 @@ textarea {
 .auth-switch a {
   color: var(--rose);
   font-weight: 500;
+}
+
+.auth-existing-account {
+  display: flex;
+  margin-top: 16px;
+  text-align: center;
+  width: 100%;
+}
+
+.auth-legal {
+  color: var(--warm-gray);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 14px auto 0;
+  max-width: 620px;
+  text-align: center;
+}
+
+.auth-legal a {
+  color: var(--rose);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .auth-form span {
@@ -4528,6 +4575,11 @@ textarea {
     font-size: 11px;
     min-height: 34px;
     padding: 0 12px;
+  }
+
+  .share-btn {
+    min-width: 38px;
+    padding: 0;
   }
 
   .checkout-form-grid--2,

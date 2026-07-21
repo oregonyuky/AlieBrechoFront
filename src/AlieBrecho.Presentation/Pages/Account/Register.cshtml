@@ -60,6 +60,16 @@
 
             <button class="button full" type="submit">Cadastrar cliente</button>
         </form>
+
+        <a class="button button-secondary auth-existing-account"
+           asp-page="/Account/Login"
+           asp-route-returnUrl="@Model.ReturnUrl">Entrar em uma conta existente</a>
+
+        <p class="auth-legal">
+            Ao continuar, você concorda com os Termos de Serviço e confirma que leu a nossa
+            <a href="https://www.pinterest.com/_/_/policy/privacy-policy/" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>.
+            <a href="https://policy.pinterest.com/notice-at-collection" target="_blank" rel="noopener noreferrer">Aviso na coleta de informações</a>.
+        </p>
     </div>
 </section>
 

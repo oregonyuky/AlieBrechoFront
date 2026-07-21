@@ -5,6 +5,7 @@ public sealed record BagSummary
     public string? Id { get; init; }
     public string? Status { get; init; }
     public DateTime? ExpirationDate { get; init; }
+    public DateTime? PaidAt { get; init; }
     public decimal TotalItemsValue { get; init; }
     public decimal? ShippingCost { get; init; }
     public int ItemCount { get; init; }
@@ -19,5 +20,6 @@ public sealed record BagItemSummary
     public int Quantity { get; init; }
     public decimal UnitPrice { get; init; }
     public bool IsPaid { get; init; }
+    public DateTime? PaidAt { get; init; }
     public decimal Total => UnitPrice * Quantity;
 }

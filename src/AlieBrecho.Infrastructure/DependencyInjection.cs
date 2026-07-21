@@ -38,6 +38,8 @@ public static class DependencyInjection
             provider.GetRequiredService<AlieBrechoApiClient>());
         services.AddScoped<IContactMessageGateway>(provider =>
             provider.GetRequiredService<AlieBrechoApiClient>());
+        services.AddScoped<ISiteSettingsGateway>(provider =>
+            provider.GetRequiredService<AlieBrechoApiClient>());
 
         return services;
     }

@@ -329,6 +329,7 @@ async function getPurchases() {
     const orders = await response.json();
     return orders.map((order) => ({
       orderId: order.orderId,
+      purchaseType: order.purchaseType || "order",
       status: order.status,
       statusText: getStatusLabel(order.status),
       generatedAt: order.createdAt || order.updatedAt,
@@ -718,11 +719,13 @@ async function renderPurchasesPage() {
         })
       : "Data nao informada";
     const card = document.createElement("article");
+    const isBagPurchase = order.purchaseType === "bag" || order.deliveryType === "bag" || order?.delivery?.mode === "Sacolinha";
+    const purchaseTypeLabel = isBagPurchase ? "Compra pela sacolinha" : "Pedido normal";
     card.className = "purchase-card";
     card.innerHTML = `
       <div class="purchase-card__header">
         <div>
-          <span class="eyebrow">Pedido</span>
+          <span class="eyebrow">${purchaseTypeLabel}</span>
           <strong>${escapeHtml(orderId)}</strong>
           <span class="purchase-card__date">Comprado em ${escapeHtml(purchaseDate)}</span>
         </div>
@@ -2207,13 +2210,18 @@ document.querySelectorAll(".share-btn[data-share]").forEach((button) => {
     const url = window.location.href;
     const share = button.dataset.share;
 
-    if (share === "whatsapp") {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}`, "_blank", "noopener");
+    if (share === "facebook") {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener");
       return;
     }
 
     if (share === "pinterest") {
       window.open(`https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}`, "_blank", "noopener");
+      return;
+    }
+
+    if (share === "twitter") {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`, "_blank", "noopener");
       return;
     }
 

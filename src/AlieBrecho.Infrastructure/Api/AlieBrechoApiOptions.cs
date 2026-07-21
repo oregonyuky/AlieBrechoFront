@@ -17,6 +17,7 @@ public sealed class AlieBrechoApiOptions
     public string OrderDetailPathTemplate { get; init; } = "api/Order/GetOrderSingle?id={id}";
     public string BagCheckoutPath { get; init; } = "api/Bag/CheckoutBag";
     public string ActiveBagPathTemplate { get; init; } = "api/Bag/GetActiveBag?customerId={customerId}";
+    public string BagPurchaseHistoryPathTemplate { get; init; } = "api/Bag/GetPurchaseHistory?customerId={customerId}";
     public string BagDetailPathTemplate { get; init; } = "api/Bag/GetBagSingle?id={id}";
     public string FinalizeBagPath { get; init; } = "api/Bag/FinalizeBag";
     public string MercadoPagoPixPaymentPath { get; init; } = "api/pix/criar-pagamento";
@@ -25,4 +26,5 @@ public sealed class AlieBrechoApiOptions
     public string RegisterPath { get; init; } = "api/Security/Register";
     public string DropConfigActivePath { get; init; } = "api/drop-config/active";
     public string ContactMessagesPath { get; init; } = "api/contact-messages";
+    public string SiteSettingsPath { get; init; } = "api/SiteSettings";
 }

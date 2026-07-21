@@ -18,7 +18,31 @@ public class IndexModel(IBagGateway bagGateway, IOrderGateway orderGateway) : Pa
         }
 
         var orders = await orderGateway.GetOrdersByCustomerAsync(customerId, cancellationToken);
-        return new JsonResult(orders);
+        var bags = await bagGateway.GetPurchaseHistoryAsync(customerId, cancellationToken);
+
+        var purchases = orders.Select(order => new
+        {
+            orderId = order.OrderId,
+            purchaseType = "order",
+            status = order.Status,
+            totalAmount = order.TotalAmount,
+            shippingCost = order.ShippingCost,
+            amountPaid = order.AmountPaid,
+            paidAt = (DateTime?)null,
+            items = order.Items
+        }).Concat(bags.Select(bag => new
+        {
+            orderId = bag.Id,
+            purchaseType = "bag",
+            status = bag.Status,
+            totalAmount = (decimal?)(bag.TotalItemsValue + (bag.ShippingCost ?? 0m)),
+            shippingCost = bag.ShippingCost,
+            amountPaid = (decimal?)bag.TotalItemsValue,
+            paidAt = bag.PaidAt,
+            items = bag.Items
+        })).OrderByDescending(x => x.paidAt).ToArray();
+
+        return new JsonResult(purchases);
     }
 
     public async Task<IActionResult> OnGetBagExistsAsync(

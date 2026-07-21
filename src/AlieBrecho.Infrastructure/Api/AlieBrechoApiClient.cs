@@ -17,7 +17,7 @@ internal sealed class AlieBrechoApiClient(
     HttpClient httpClient,
     IOptions<AlieBrechoApiOptions> options,
     IMemoryCache memoryCache)
-    : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway, IContactMessageGateway
+    : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway, IContactMessageGateway, ISiteSettingsGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -514,6 +514,34 @@ internal sealed class AlieBrechoApiClient(
         }
     }
 
+    public async Task<SiteSettings?> GetAsync(CancellationToken cancellationToken)
+    {
+        var settings = await GetWrappedAsync<SiteSettingsDto>(
+            _options.SiteSettingsPath,
+            cancellationToken,
+            skipAuthorization: true);
+        var imageUrl = string.IsNullOrWhiteSpace(settings.HeroImageUrl)
+            ? null
+            : new Uri(_options.BaseUrl, settings.HeroImageUrl.TrimStart('/')).ToString();
+        return new SiteSettings(imageUrl);
+    }
+
+    public async Task<IReadOnlyList<BagSummary>> GetPurchaseHistoryAsync(
+        string customerId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return [];
+        }
+
+        var path = _options.BagPurchaseHistoryPathTemplate.Replace(
+            "{customerId}",
+            Uri.EscapeDataString(customerId));
+        var bags = await GetWrappedAsync<List<BagSummaryDto>>(path, cancellationToken);
+        return bags.Select(MapBagSummary).ToArray();
+    }
+
     public async Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(
         string orderId,
         CancellationToken cancellationToken)
@@ -944,6 +972,7 @@ internal sealed class AlieBrechoApiClient(
             Id = dto.Id,
             Status = dto.Status,
             ExpirationDate = dto.ExpirationDate,
+            PaidAt = dto.PaidAt,
             TotalItemsValue = mappedItems.Sum(item => item.Total),
             ShippingCost = dto.ShippingCost,
             ItemCount = mappedItems.Sum(item => item.Quantity),
@@ -960,7 +989,8 @@ internal sealed class AlieBrechoApiClient(
             ImageUrl = ResolveImageUrl(item.ProductImageUrl ?? item.ImageUrl ?? item.MainImageUrl ?? item.Product?.MainImageUrl),
             Quantity = item.Quantity > 0 ? item.Quantity : 1,
             UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m,
-            IsPaid = item.IsPaid
+            IsPaid = item.IsPaid,
+            PaidAt = item.PaidAt
         }).ToArray();
     }
 
@@ -1028,6 +1058,11 @@ internal sealed class AlieBrechoApiClient(
         return string.Join(' ', new[] { firstName, lastName }
             .Where(part => !string.IsNullOrWhiteSpace(part))
             .Select(part => part.Trim()));
+    }
+
+    private sealed record SiteSettingsDto
+    {
+        public string? HeroImageUrl { get; init; }
     }
 
     private sealed record ApiResponse<T>(T? Data)
@@ -1153,6 +1188,7 @@ internal sealed class AlieBrechoApiClient(
         public string? Id { get; init; }
         public string? Status { get; init; }
         public DateTime? ExpirationDate { get; init; }
+        public DateTime? PaidAt { get; init; }
         public decimal TotalItemsValue { get; init; }
         public decimal? ShippingCost { get; init; }
         public int ItemCount { get; init; }
@@ -1173,6 +1209,7 @@ internal sealed class AlieBrechoApiClient(
         public decimal? UnitPrice { get; init; }
         public decimal? Price { get; init; }
         public bool IsPaid { get; init; }
+        public DateTime? PaidAt { get; init; }
         public ProductDto? Product { get; init; }
     }
 

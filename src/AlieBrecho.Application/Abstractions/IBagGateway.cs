@@ -18,6 +18,10 @@ public interface IBagGateway
         string bagId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<BagSummary>> GetPurchaseHistoryAsync(
+        string customerId,
+        CancellationToken cancellationToken);
+
     Task<BagFinalizeResult?> FinalizeBagAsync(
         string bagId,
         CancellationToken cancellationToken);
