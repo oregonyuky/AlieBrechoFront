@@ -60,16 +60,21 @@
                 <span class="section__eyebrow">Encontre seu estilo</span>
                 <h2 class="catalog-categories__title">Explore por <em>categoria</em></h2>
                 <nav class="catalog-categories__nav">
-                    <a class="catalog-category @(Model.Catalog.SelectedCategoryId is null ? "active" : null)" asp-page="/Index">
+                    <button type="button"
+                            class="catalog-category @(Model.Catalog.SelectedCategoryId is null ? "active" : null)"
+                            data-category-filter=""
+                            aria-pressed="@(Model.Catalog.SelectedCategoryId is null ? "true" : "false")">
                         Todos os garimpos <span>@Model.Catalog.Products.Count</span>
-                    </a>
+                    </button>
                     @foreach (var category in Model.Catalog.Categories.Where(category => category.IsActive))
                     {
-                        <a class="catalog-category @(Model.Catalog.SelectedCategoryId == category.Id ? "active" : null)"
-                           asp-page="/Index"
-                           asp-route-categoryId="@category.Id">
-                            @category.Name <span>›</span>
-                        </a>
+                        var categoryCount = Model.Catalog.Products.Count(product => product.CategoryId == category.Id);
+                        <button type="button"
+                                class="catalog-category @(Model.Catalog.SelectedCategoryId == category.Id ? "active" : null)"
+                                data-category-filter="@category.Id"
+                                aria-pressed="@(Model.Catalog.SelectedCategoryId == category.Id ? "true" : "false")">
+                            @category.Name <span>@categoryCount</span>
+                        </button>
                     }
                 </nav>
             </aside>
@@ -80,7 +85,8 @@
                 <span class="section__eyebrow">Em destaque</span>
                 <h2 class="section__title">Pecas <em>amadas</em></h2>
             </div>
-            <span class="products-count">@Model.Catalog.Products.Count item(ns)</span>
+            <span class="products-count">@Model.Catalog.Products.Count(product =>
+                Model.Catalog.SelectedCategoryId is null || product.CategoryId == Model.Catalog.SelectedCategoryId) item(ns)</span>
         </div>
 
         <div class="products-grid">
@@ -102,11 +108,21 @@
                     product.MainImageUrl ?? string.Empty
                 });
 
-                <article class="product-card reveal" data-product-card-id="@product.Id" data-product-card-signature="@productSignature">
+                <article class="product-card reveal"
+                         data-product-card-id="@product.Id"
+                         data-product-card-signature="@productSignature"
+                         data-category-id="@product.CategoryId"
+                         hidden="@(Model.Catalog.SelectedCategoryId is not null && Model.Catalog.SelectedCategoryId != product.CategoryId)">
                     <a class="product-card__media" asp-page="/Products/Details" asp-route-id="@product.Id">
                         @if (!string.IsNullOrWhiteSpace(product.MainImageUrl))
                         {
-                            <img class="product-card__img" src="@product.MainImageUrl" alt="@(product.AltText ?? product.Name)" />
+                            <img class="product-card__img"
+                                 src="@product.MainImageUrl"
+                                 alt="@(product.AltText ?? product.Name)"
+                                 loading="lazy"
+                                 decoding="async"
+                                 width="400"
+                                 height="488" />
                         }
                         else
                         {

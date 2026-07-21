@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using AlieBrecho.Application.Abstractions;
@@ -9,11 +8,15 @@ using AlieBrecho.Domain.Contact;
 using AlieBrecho.Domain.Marketing;
 using AlieBrecho.Domain.Orders;
 using AlieBrecho.Domain.Products;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace AlieBrecho.Infrastructure.Api;
 
-internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBrechoApiOptions> options)
+internal sealed class AlieBrechoApiClient(
+    HttpClient httpClient,
+    IOptions<AlieBrechoApiOptions> options,
+    IMemoryCache memoryCache)
     : IProductCatalogGateway, IOrderGateway, IBagGateway, IAuthenticationGateway, ICustomerGateway, IDropConfigGateway, IContactMessageGateway
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
@@ -23,6 +26,7 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
     };
 
     private readonly AlieBrechoApiOptions _options = options.Value;
+    private const string CategoriesCacheKey = "aliebrecho:catalog:categories";
 
     public async Task SendAsync(ContactMessageRequest request, CancellationToken cancellationToken)
     {
@@ -109,10 +113,10 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
 
     public async Task<IReadOnlyList<Product>> GetProductsAsync(CancellationToken cancellationToken)
     {
-        var response = await GetCatalogListAsync<ProductDto>(
-            _options.ProductsPath,
-            [_options.PublicProductsPath, "products"],
-            cancellationToken);
+        var response = await GetWrappedAsync<List<ProductDto>>(
+            _options.PublicProductsPath,
+            cancellationToken,
+            skipAuthorization: true);
 
         return response.Select(MapProduct).ToList();
     }
@@ -177,18 +181,27 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
 
     public async Task<IReadOnlyList<Category>> GetCategoriesAsync(CancellationToken cancellationToken)
     {
+        if (memoryCache.TryGetValue(CategoriesCacheKey, out IReadOnlyList<Category>? cachedCategories) &&
+            cachedCategories is not null)
+        {
+            return cachedCategories;
+        }
+
         try
         {
-            var response = await GetCatalogListAsync<CategoryDto>(
-                _options.CategoriesPath,
-                [_options.PublicCategoriesPath, "categories"],
-                cancellationToken);
+            var response = await GetWrappedAsync<List<CategoryDto>>(
+                _options.PublicCategoriesPath,
+                cancellationToken,
+                skipAuthorization: true);
 
-            return response.Select(category => new Category(
+            IReadOnlyList<Category> categories = response.Select(category => new Category(
                 category.Id,
                 category.Name ?? string.Empty,
                 category.Description,
                 category.IsActive)).ToList();
+
+            memoryCache.Set(CategoriesCacheKey, categories, _options.CategoriesCacheDuration);
+            return categories;
         }
         catch (HttpRequestException)
         {
@@ -794,45 +807,6 @@ internal sealed class AlieBrechoApiClient(HttpClient httpClient, IOptions<AlieBr
         }
 
         return null;
-    }
-
-    private async Task<IReadOnlyList<T>> GetCatalogListAsync<T>(
-        string primaryPath,
-        IReadOnlyList<string> publicPaths,
-        CancellationToken cancellationToken)
-        where T : class
-    {
-        try
-        {
-            return await GetWrappedAsync<List<T>>(primaryPath, cancellationToken);
-        }
-        catch (HttpRequestException primaryException)
-        {
-            foreach (var publicPath in GetDistinctPublicPaths(primaryPath, publicPaths))
-            {
-                try
-                {
-                    return await GetWrappedAsync<List<T>>(publicPath, cancellationToken, skipAuthorization: true);
-                }
-                catch (HttpRequestException)
-                {
-                }
-            }
-
-            ExceptionDispatchInfo.Capture(primaryException).Throw();
-            throw;
-        }
-    }
-
-    private static IReadOnlyList<string> GetDistinctPublicPaths(
-        string primaryPath,
-        IReadOnlyList<string> publicPaths)
-    {
-        return publicPaths
-            .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Where(path => !string.Equals(primaryPath, path, StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
     }
 
     private static async Task EnsureSuccessAsync(

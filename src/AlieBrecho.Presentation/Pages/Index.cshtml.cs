@@ -12,7 +12,13 @@ public class IndexModel(CatalogService catalogService) : PageModel
     {
         try
         {
-            Catalog = await catalogService.GetCatalogAsync(categoryId, cancellationToken);
+            var catalog = await catalogService.GetCatalogAsync(null, cancellationToken);
+            var selectedCategoryId = catalog.Categories.Any(category =>
+                category.IsActive && category.Id == categoryId)
+                ? categoryId
+                : null;
+
+            Catalog = catalog with { SelectedCategoryId = selectedCategoryId };
         }
         catch (HttpRequestException)
         {

@@ -1000,44 +1000,68 @@ function bindCartForms(root = document) {
 
 bindCartForms();
 
-document.addEventListener("click", async (event) => {
-  const categoryLink = event.target.closest(".catalog-category");
-  if (!categoryLink || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
-    return;
+function animateVisibleCatalogCards(cards) {
+  cards.forEach((card) => {
+    card.classList.remove("category-enter");
+    card.style.removeProperty("--category-enter-delay");
+  });
+
+  // Forca o navegador a registrar o estado inicial para reiniciar a animacao.
+  void document.querySelector(".products-grid")?.offsetWidth;
+
+  cards.forEach((card, index) => {
+    card.classList.add("visible", "category-enter");
+    card.style.setProperty("--category-enter-delay", `${Math.min(index * 55, 330)}ms`);
+  });
+}
+
+function filterCatalog(categoryId, updateHistory = true) {
+  const categoryButtons = document.querySelectorAll("[data-category-filter]");
+  const productCards = document.querySelectorAll("[data-product-card-id][data-category-id]");
+  const productsCount = document.querySelector(".products-count");
+  const visibleCards = [];
+  let visibleCount = 0;
+
+  productCards.forEach((card) => {
+    const shouldShow = !categoryId || card.dataset.categoryId === categoryId;
+    card.hidden = !shouldShow;
+    if (shouldShow) {
+      visibleCount += 1;
+      visibleCards.push(card);
+    } else {
+      card.classList.remove("category-enter");
+    }
+  });
+
+  animateVisibleCatalogCards(visibleCards);
+
+  categoryButtons.forEach((button) => {
+    const isActive = (button.dataset.categoryFilter || "") === categoryId;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  if (productsCount) {
+    productsCount.textContent = `${visibleCount} item(ns)`;
   }
 
-  const catalogProducts = document.querySelector(".catalog-products");
-  if (!catalogProducts) {
-    return;
+  if (updateHistory) {
+    const url = new URL(window.location.href);
+    if (categoryId) url.searchParams.set("categoryId", categoryId);
+    else url.searchParams.delete("categoryId");
+    window.history.pushState({ categoryId }, "", url);
   }
+}
 
-  event.preventDefault();
-  if (catalogProducts.dataset.loading === "true") {
-    return;
-  }
+document.addEventListener("click", (event) => {
+  const categoryButton = event.target.closest("[data-category-filter]");
+  if (!categoryButton) return;
+  filterCatalog(categoryButton.dataset.categoryFilter || "");
+});
 
-  try {
-    catalogProducts.dataset.loading = "true";
-    const response = await fetch(categoryLink.href, {
-      headers: { "X-Requested-With": "XMLHttpRequest" },
-      cache: "no-store"
-    });
-    if (!response.ok) throw new Error("Nao foi possivel carregar a categoria.");
-
-    const page = new DOMParser().parseFromString(await response.text(), "text/html");
-    const nextProducts = page.querySelector(".catalog-products");
-    const nextCategories = page.querySelector(".catalog-categories__nav");
-    if (!nextProducts || !nextCategories) throw new Error("Categoria invalida.");
-
-    catalogProducts.innerHTML = nextProducts.innerHTML;
-    document.querySelector(".catalog-categories__nav")?.replaceWith(nextCategories);
-    bindCartForms(catalogProducts);
-    window.history.pushState({}, "", categoryLink.href);
-  } catch {
-    window.location.href = categoryLink.href;
-  } finally {
-    delete catalogProducts.dataset.loading;
-  }
+window.addEventListener("popstate", () => {
+  const categoryId = new URL(window.location.href).searchParams.get("categoryId") || "";
+  filterCatalog(categoryId, false);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -2253,7 +2277,7 @@ function initCatalogNotifications() {
 
   const checkCatalogSnapshot = async () => {
     try {
-      const response = await fetch(`/api/catalog/snapshot${window.location.search}`, {
+      const response = await fetch("/api/catalog/snapshot", {
         headers: { Accept: "application/json" },
         cache: "no-store"
       });
