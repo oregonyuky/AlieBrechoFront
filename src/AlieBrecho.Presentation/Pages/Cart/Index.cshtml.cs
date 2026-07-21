@@ -30,6 +30,31 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway, IOrderG
         return await CartJsonAsync(cancellationToken);
     }
 
+    public async Task<IActionResult> OnGetShippingAsync(string postCode, CancellationToken cancellationToken)
+    {
+        var cart = await cartService.GetCartAsync(cancellationToken);
+        if (cart.IsEmpty)
+        {
+            return BadRequest(new { message = "Seu carrinho esta vazio." });
+        }
+
+        var quote = await orderGateway.CalculateAutomaticShippingAsync(postCode, cart, cancellationToken);
+        if (!quote.Success)
+        {
+            return BadRequest(new { message = quote.Message });
+        }
+
+        return new JsonResult(new
+        {
+            shippingCost = quote.ShippingCost,
+            shippingCostText = quote.ShippingCost.ToString("C"),
+            packageName = quote.PackageName,
+            occupationPoints = quote.OccupationPoints,
+            capacityPoints = quote.CapacityPoints,
+            carrierName = quote.CarrierName
+        });
+    }
+
     public async Task<IActionResult> OnPostFinalizeBagAsync(string bagId, CancellationToken cancellationToken)
     {
         var result = await bagGateway.FinalizeBagAsync(bagId, cancellationToken);

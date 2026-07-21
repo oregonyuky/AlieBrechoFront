@@ -13,7 +13,8 @@ namespace AlieBrecho.Presentation.Pages.Checkout;
 public class IndexModel(
     CheckoutService checkoutService,
     CartService cartService,
-    ICustomerGateway customerGateway) : PageModel
+    ICustomerGateway customerGateway,
+    IOrderGateway orderGateway) : PageModel
 {
     [BindProperty]
     public CheckoutRequest Input { get; set; } = new();
@@ -119,6 +120,31 @@ public class IndexModel(
 
             return Page();
         }
+    }
+
+    public async Task<IActionResult> OnGetShippingAsync(string postCode, CancellationToken cancellationToken)
+    {
+        var cart = await cartService.GetCartAsync(cancellationToken);
+        if (cart.IsEmpty)
+        {
+            return BadRequest(new { message = "Seu carrinho esta vazio." });
+        }
+
+        var quote = await orderGateway.CalculateAutomaticShippingAsync(postCode, cart, cancellationToken);
+        if (!quote.Success)
+        {
+            return BadRequest(new { message = quote.Message ?? "Nao foi possivel calcular o frete." });
+        }
+
+        return new JsonResult(new
+        {
+            shippingCost = quote.ShippingCost,
+            shippingCostText = quote.ShippingCost.ToString("C"),
+            packageName = quote.PackageName,
+            occupationPoints = quote.OccupationPoints,
+            capacityPoints = quote.CapacityPoints,
+            carrierName = quote.CarrierName
+        });
     }
 
     private bool IsAjaxRequest()

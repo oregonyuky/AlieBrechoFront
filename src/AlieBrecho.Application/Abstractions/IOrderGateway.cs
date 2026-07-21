@@ -30,7 +30,15 @@ public interface IOrderGateway
     Task<IReadOnlyList<BagItemSummary>> GetOrderItemsAsync(
         string orderId,
         CancellationToken cancellationToken);
+
+    Task<AutomaticShippingQuote> CalculateAutomaticShippingAsync(
+        string postCode,
+        AlieBrecho.Domain.Orders.Cart cart,
+        CancellationToken cancellationToken);
 }
+
+public sealed record AutomaticShippingQuote(bool Success, string? Message, decimal ShippingCost,
+    string? PackageName, int OccupationPoints, int CapacityPoints, string? CarrierName);
 
 public sealed record PaymentCheckoutResult(
     string? PaymentUrl,

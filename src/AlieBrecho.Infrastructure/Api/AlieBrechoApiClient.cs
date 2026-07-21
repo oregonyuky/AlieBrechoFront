@@ -556,6 +556,33 @@ internal sealed class AlieBrechoApiClient(
         return MapBagItems(order.OrderDetails.Count > 0 ? order.OrderDetails : order.Items);
     }
 
+    public async Task<AutomaticShippingQuote> CalculateAutomaticShippingAsync(
+        string postCode,
+        Cart cart,
+        CancellationToken cancellationToken)
+    {
+        var payload = new AutomaticShippingPayload
+        {
+            DestinationPostCode = postCode,
+            Items = cart.Items.Select(x => new AutomaticShippingItemPayload
+            {
+                ProductId = x.Product.Id,
+                Quantity = x.Quantity
+            }).ToList()
+        };
+        using var request = new HttpRequestMessage(HttpMethod.Post, _options.AutomaticShippingPath)
+        {
+            Content = JsonContent.Create(payload, options: JsonOptions)
+        };
+        request.Options.Set(AlieBrechoApiAuthorizationHandler.SkipAuthorizationOption, true);
+        using var response = await httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+        var result = await ReadWrappedAsync<AutomaticShippingDto>(response, cancellationToken);
+        var data = result.Data ?? new AutomaticShippingDto();
+        return new AutomaticShippingQuote(data.Success, data.Message, data.ShippingCost,
+            data.PackageName, data.OccupationPoints, data.CapacityPoints, data.CarrierName);
+    }
+
     private async Task<string?> SaveCustomerFromCheckoutAsync(
         CheckoutRequest request,
         CancellationToken cancellationToken)
@@ -1063,6 +1090,29 @@ internal sealed class AlieBrechoApiClient(
     private sealed record SiteSettingsDto
     {
         public string? HeroImageUrl { get; init; }
+    }
+
+    private sealed record AutomaticShippingPayload
+    {
+        public string? DestinationPostCode { get; init; }
+        public List<AutomaticShippingItemPayload> Items { get; init; } = [];
+    }
+
+    private sealed record AutomaticShippingItemPayload
+    {
+        public string? ProductId { get; init; }
+        public int Quantity { get; init; }
+    }
+
+    private sealed record AutomaticShippingDto
+    {
+        public bool Success { get; init; }
+        public string? Message { get; init; }
+        public decimal ShippingCost { get; init; }
+        public string? PackageName { get; init; }
+        public int OccupationPoints { get; init; }
+        public int CapacityPoints { get; init; }
+        public string? CarrierName { get; init; }
     }
 
     private sealed record ApiResponse<T>(T? Data)

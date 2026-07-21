@@ -105,8 +105,7 @@ const freteError = document.getElementById("freteError");
 const freteResults = document.getElementById("freteResults");
 const pacPrazo = document.getElementById("pacPrazo");
 const pacPrice = document.getElementById("pacPrice");
-const sedexPrazo = document.getElementById("sedexPrazo");
-const sedexPrice = document.getElementById("sedexPrice");
+const shippingCarrierName = document.getElementById("shippingCarrierName");
 const cartBagPanel = document.getElementById("cartBagPanel");
 const cartBagCount = document.getElementById("cartBagCount");
 const cartBagDeadline = document.getElementById("cartBagDeadline");
@@ -797,38 +796,35 @@ function formatCurrency(value) {
   });
 }
 
-function calculateShipping() {
+async function calculateShipping() {
   const digits = cepInput?.value.replace(/\D/g, "") ?? "";
   const valid = digits.length === 8;
 
   freteError?.classList.toggle("show", !valid);
-  freteResults?.classList.toggle("show", valid);
+  freteResults?.classList.remove("show");
 
   if (!valid) {
     return;
   }
 
-  const regionSeed = Number(digits.slice(0, 2));
-  const pacDays = 4 + (regionSeed % 4);
-  const sedexDays = 1 + (regionSeed % 3);
-  const pacValue = currentCartSubtotal >= 150 ? 0 : 14.9 + (regionSeed % 5) * 1.8;
-  const sedexValue = 24.9 + (regionSeed % 6) * 2.4;
+  try {
+    const response = await fetch(`/Cart?handler=Shipping&postCode=${encodeURIComponent(digits)}`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Nao foi possivel calcular o frete.");
 
-  if (pacPrazo) {
-    pacPrazo.textContent = `Entrega em ${pacDays} a ${pacDays + 2} dias uteis`;
-  }
-
-  if (sedexPrazo) {
-    sedexPrazo.textContent = `Entrega em ${sedexDays} a ${sedexDays + 1} dias uteis`;
-  }
-
-  if (pacPrice) {
-    pacPrice.textContent = pacValue === 0 ? "Gratis" : formatCurrency(pacValue);
-    pacPrice.classList.toggle("gratis", pacValue === 0);
-  }
-
-  if (sedexPrice) {
-    sedexPrice.textContent = formatCurrency(sedexValue);
+    freteResults?.classList.add("show");
+    freteError?.classList.remove("show");
+    if (pacPrazo) pacPrazo.textContent = `${data.packageName} · ${data.occupationPoints}/${data.capacityPoints} pontos`;
+    if (pacPrice) pacPrice.textContent = data.shippingCostText;
+    if (shippingCarrierName) shippingCarrierName.textContent = data.carrierName || "Transportadora";
+  } catch (error) {
+    if (freteError) {
+      freteError.textContent = error.message;
+      freteError.classList.add("show");
+    }
   }
 }
 
@@ -1094,6 +1090,7 @@ function initCheckoutDynamics() {
 
   let currentStep = 1;
   let fretePrice = 0;
+  let shippingQuoteLoading = false;
   let cupomDiscount = 0;
   let selectedDeliveryMode = "normal";
   const totalSteps = 5;
@@ -1435,57 +1432,62 @@ function initCheckoutDynamics() {
     `;
   }
 
-  function showDeliveryOptions(cep) {
+  async function showDeliveryOptions(cep) {
     if (isBagDelivery()) {
       selectDeliveryMode("bag");
       return;
     }
 
-    const prefix = Number.parseInt(cep.slice(0, 2), 10);
-    let pacDays = 12;
-    let sedexDays = 4;
-    let pacPrice = 18.9;
-
-    if (prefix >= 1 && prefix <= 19) {
-      pacDays = 5;
-      sedexDays = 1;
-      pacPrice = 0;
-    } else if (prefix >= 20 && prefix <= 28) {
-      pacDays = 6;
-      sedexDays = 2;
-      pacPrice = 8.9;
-    } else if (prefix >= 30 && prefix <= 38) {
-      pacDays = 7;
-      sedexDays = 2;
-      pacPrice = 10.9;
-    } else if (prefix >= 80 && prefix <= 87) {
-      pacDays = 7;
-      sedexDays = 2;
-      pacPrice = 12.9;
-    } else if (prefix >= 60 && prefix <= 63) {
-      pacDays = 10;
-      sedexDays = 3;
-      pacPrice = 15.9;
-    }
-
-    const sedexPrice = pacPrice === 0 ? 12 : pacPrice + 12;
     const section = byId("delivery-section");
     const options = byId("deliveryOpts");
+    const error = byId("checkoutFreteError");
 
     if (!section || !options) {
       return;
     }
 
-    fretePrice = pacPrice;
     section.classList.add("show");
-    options.innerHTML =
-      makeFreteOption("PAC", `Ate ${pacDays} dias uteis`, pacPrice, true) +
-      makeFreteOption("SEDEX", `Ate ${sedexDays} dias uteis`, sedexPrice, false) +
-      makeFreteOption("Retirada na loja", "Disponivel em 1 dia util", 0, false);
+    shippingQuoteLoading = true;
+    options.innerHTML = '<div class="delivery-opt">Calculando frete...</div>';
+    if (error) {
+      error.textContent = "";
+      error.classList.remove("show");
+    }
+    if (byId("val-entrega")) {
+      byId("val-entrega").textContent = "Calculando...";
+      byId("val-entrega").className = "total-row__val calcular";
+    }
 
-    byId("val-entrega").textContent = pacPrice === 0 ? "Gratis" : money(pacPrice);
-    byId("val-entrega").className = `total-row__val${pacPrice === 0 ? " desconto" : ""}`;
-    recalcTotal();
+    try {
+      const response = await fetch(`/Checkout?handler=Shipping&postCode=${encodeURIComponent(cep)}`, {
+        headers: { Accept: "application/json" }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || "Nao foi possivel calcular o frete.");
+      }
+
+      fretePrice = Number.parseFloat(data.shippingCost || "0") || 0;
+      const packageDescription = data.packageName
+        ? `Embalagem: ${data.packageName}`
+        : "Frete calculado para o seu endereco";
+      options.innerHTML = makeFreteOption(data.carrierName || "Transportadora", packageDescription, fretePrice, true);
+      byId("val-entrega").textContent = data.shippingCostText || money(fretePrice);
+      byId("val-entrega").className = `total-row__val${fretePrice === 0 ? " desconto" : ""}`;
+      recalcTotal();
+    } catch (requestError) {
+      fretePrice = 0;
+      options.innerHTML = "";
+      if (error) {
+        error.textContent = requestError.message;
+        error.classList.add("show");
+      }
+      byId("val-entrega").textContent = "Nao calculado";
+      byId("val-entrega").className = "total-row__val calcular";
+      recalcTotal();
+    } finally {
+      shippingQuoteLoading = false;
+    }
   }
 
   async function buscarCep() {
@@ -1515,7 +1517,6 @@ function initCheckoutDynamics() {
       byId("estado").value = data.uf || val("estado");
       clearErr("cep");
       byId("numero")?.focus();
-      showDeliveryOptions(cep);
     } catch {
       markErr("cep", "Erro ao buscar CEP");
     } finally {
@@ -1551,10 +1552,6 @@ function initCheckoutDynamics() {
       return false;
     }
 
-    if (!isBagDelivery() && !document.querySelector(".delivery-opt.selected")) {
-      showDeliveryOptions(val("cep").replace(/\D/g, ""));
-    }
-
     doneStep(3, `${val("rua")}, ${val("numero")} - ${val("cidade")}/${val("estado")}`);
     openStep(4);
     return true;
@@ -1563,9 +1560,11 @@ function initCheckoutDynamics() {
   function confirmRecebimento() {
     if (!isBagDelivery() && !document.querySelector(".delivery-opt.selected")) {
       const cep = val("cep").replace(/\D/g, "");
-      if (cep.length === 8) {
+      if (!shippingQuoteLoading && cep.length === 8) {
         showDeliveryOptions(cep);
       }
+      showToast(shippingQuoteLoading ? "Aguarde o calculo do frete." : "Escolha o envio apos o calculo do frete.");
+      return false;
     }
 
     doneStep(4, getDeliveryModeSummary());
