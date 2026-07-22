@@ -51,7 +51,6 @@
     @if (!string.IsNullOrWhiteSpace(Model.RedirectUrl))
     {
         <script>
-            window.alieBrechoClearUserData();
             window.location.replace(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.RedirectUrl)));
         </script>
     }

@@ -50,7 +50,10 @@ public sealed record PixPaymentStatusResult(
     string? PaymentId,
     string? Status,
     string? StatusDetail,
-    string? OrderStatus);
+    string? OrderStatus,
+    string? PixQrCode = null,
+    string? PixCode = null,
+    DateTime? ExpiresAt = null);
 
 public sealed record OrderSummary(
     string? OrderId,
@@ -59,4 +62,9 @@ public sealed record OrderSummary(
     decimal? ShippingCost,
     decimal? AmountPaid,
     string PaymentMethod,
-    IReadOnlyList<BagItemSummary> Items);
+    IReadOnlyList<BagItemSummary> Items,
+    string? PaymentId = null,
+    string? PaymentStatus = null,
+    string? PixQrCode = null,
+    string? PixCode = null,
+    DateTime? PaymentExpiresAt = null);

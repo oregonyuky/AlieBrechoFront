@@ -120,27 +120,9 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway, IOrderG
     private async Task<BagSummary?> GetActiveBagAsync(CancellationToken cancellationToken)
     {
         var customerId = GetAuthenticatedCustomerId();
-        var bag = string.IsNullOrWhiteSpace(customerId)
+        return string.IsNullOrWhiteSpace(customerId)
             ? null
             : await bagGateway.GetActiveBagAsync(customerId, cancellationToken);
-
-        if (bag is null || bag.Items.Count > 0 || string.IsNullOrWhiteSpace(bag.Id))
-        {
-            return bag;
-        }
-
-        try
-        {
-            return bag with { Items = await orderGateway.GetOrderItemsAsync(bag.Id, cancellationToken) };
-        }
-        catch (HttpRequestException)
-        {
-            return bag;
-        }
-        catch (InvalidOperationException)
-        {
-            return bag;
-        }
     }
 
     private static object? MapBag(BagSummary? bag)
@@ -155,6 +137,13 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway, IOrderG
             id = bag.Id,
             status = bag.Status,
             itemCount = bag.ItemCount,
+            paidItemCount = bag.PaidItemCount,
+            pendingItemCount = bag.PendingItemCount,
+            currentPaymentId = bag.CurrentPaymentId,
+            currentPaymentProvider = bag.CurrentPaymentProvider,
+            currentPaymentQrCodeBase64 = bag.CurrentPaymentQrCodeBase64,
+            currentPaymentQrCode = bag.CurrentPaymentQrCode,
+            currentPaymentExpiresAt = bag.CurrentPaymentExpiresAt,
             expirationDate = bag.ExpirationDate,
             expirationDateText = bag.ExpirationDate?.ToString("dd/MM/yyyy HH:mm"),
             totalItemsValue = bag.TotalItemsValue,
@@ -170,7 +159,10 @@ public class IndexModel(CartService cartService, IBagGateway bagGateway, IOrderG
                 unitPrice = item.UnitPrice,
                 unitPriceText = item.UnitPrice.ToString("C"),
                 total = item.Total,
-                totalText = item.Total.ToString("C")
+                totalText = item.Total.ToString("C"),
+                isPaid = item.IsPaid,
+                isReserved = item.IsReserved,
+                reservationExpiresAt = item.ReservationExpiresAt
             })
         };
     }

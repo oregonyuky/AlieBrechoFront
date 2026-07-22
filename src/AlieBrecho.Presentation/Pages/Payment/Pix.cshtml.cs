@@ -33,7 +33,10 @@ public class PixModel(IOrderGateway orderGateway) : PageModel
             paymentId = status.PaymentId,
             status = status.Status,
             statusDetail = status.StatusDetail,
-            orderStatus = status.OrderStatus
+            orderStatus = status.OrderStatus,
+            pixQrCode = status.PixQrCode,
+            pixCode = status.PixCode,
+            expiresAt = status.ExpiresAt
         });
     }
 }

@@ -810,6 +810,21 @@ main {
   color: #8f3d36;
 }
 
+.bag-order__status--expired {
+  background: rgba(176, 42, 42, 0.16);
+  color: #a32020;
+}
+
+.cart-bag-panel--expired {
+  border-color: rgba(176, 42, 42, 0.45);
+}
+
+.cart-bag-panel--expired .cart-bag-panel__label,
+.cart-bag-panel--expired small,
+.pix-payment-help--expired {
+  color: #a32020;
+}
+
 .bag-order .cart-item__qty-row {
   color: var(--warm-gray);
   font-size: 12px;

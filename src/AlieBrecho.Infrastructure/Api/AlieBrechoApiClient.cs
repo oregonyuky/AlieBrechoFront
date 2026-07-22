@@ -393,17 +393,7 @@ internal sealed class AlieBrechoApiClient(
                 return null;
             }
 
-            var summary = MapBagSummary(result.Data);
-            if (summary.Items.Count > 0 || string.IsNullOrWhiteSpace(summary.Id))
-            {
-                return summary;
-            }
-
-            var detailPath = _options.BagDetailPathTemplate.Replace(
-                "{id}",
-                Uri.EscapeDataString(summary.Id));
-            var detail = await GetWrappedAsync<BagSummaryDto>(detailPath, cancellationToken);
-            return MapBagSummary(detail);
+            return MapBagSummary(result.Data);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -460,7 +450,10 @@ internal sealed class AlieBrechoApiClient(
                 result.Data.PaymentId,
                 result.Data.Status,
                 result.Data.StatusDetail,
-                result.Data.OrderStatus);
+                result.Data.OrderStatus,
+                BuildQrImage(result.Data.QrCodeBase64),
+                result.Data.QrCode,
+                result.Data.Expiracao);
     }
 
     public async Task<OrderSummary?> GetOrderSummaryAsync(
@@ -990,9 +983,7 @@ internal sealed class AlieBrechoApiClient(
                 ? dto.BagItems
                 : dto.OrderDetails;
 
-        var mappedItems = MapBagItems(items)
-            .Where(item => item.IsPaid)
-            .ToArray();
+        var mappedItems = MapBagItems(items).ToArray();
 
         return new BagSummary
         {
@@ -1000,9 +991,16 @@ internal sealed class AlieBrechoApiClient(
             Status = dto.Status,
             ExpirationDate = dto.ExpirationDate,
             PaidAt = dto.PaidAt,
-            TotalItemsValue = mappedItems.Sum(item => item.Total),
+            TotalItemsValue = dto.TotalItemsValue,
             ShippingCost = dto.ShippingCost,
-            ItemCount = mappedItems.Sum(item => item.Quantity),
+            ItemCount = dto.ItemCount > 0 ? dto.ItemCount : mappedItems.Sum(item => item.Quantity),
+            PaidItemCount = dto.PaidItemCount,
+            PendingItemCount = dto.PendingItemCount,
+            CurrentPaymentId = dto.CurrentPaymentId,
+            CurrentPaymentProvider = dto.CurrentPaymentProvider,
+            CurrentPaymentQrCodeBase64 = BuildQrImage(dto.CurrentPaymentQrCodeBase64),
+            CurrentPaymentQrCode = dto.CurrentPaymentQrCode,
+            CurrentPaymentExpiresAt = dto.CurrentPaymentExpiresAt,
             Items = mappedItems
         };
     }
@@ -1017,6 +1015,8 @@ internal sealed class AlieBrechoApiClient(
             Quantity = item.Quantity > 0 ? item.Quantity : 1,
             UnitPrice = item.UnitPrice ?? item.Price ?? item.Product?.UnitPrice ?? 0m,
             IsPaid = item.IsPaid,
+            IsReserved = item.IsReserved,
+            ReservationExpiresAt = item.ReservationExpiresAt,
             PaidAt = item.PaidAt
         }).ToArray();
     }
@@ -1034,9 +1034,14 @@ internal sealed class AlieBrechoApiClient(
             order.ShippingCost,
             order.Payment?.Amount,
             string.IsNullOrWhiteSpace(order.Payment?.PaymentDetail?.PaymentMethod)
-                ? "Pix"
+                ? string.IsNullOrWhiteSpace(order.PaymentMethod) ? "Pix" : order.PaymentMethod
                 : order.Payment.PaymentDetail.PaymentMethod,
-            MapBagItems(items));
+            MapBagItems(items),
+            order.Payment?.ProviderTransactionId ?? order.PaymentId,
+            order.Payment?.Status ?? order.PaymentStatus,
+            BuildQrImage(order.Payment?.PixQrCodeBase64 ?? order.PixQrCodeBase64),
+            order.Payment?.PixQrCode ?? order.PixQrCode,
+            order.Payment?.ExpiresAt ?? order.PaymentExpiresAt);
     }
 
     private static string? BuildQrImage(string? qrCodeBase64)
@@ -1242,6 +1247,13 @@ internal sealed class AlieBrechoApiClient(
         public decimal TotalItemsValue { get; init; }
         public decimal? ShippingCost { get; init; }
         public int ItemCount { get; init; }
+        public int PaidItemCount { get; init; }
+        public int PendingItemCount { get; init; }
+        public string? CurrentPaymentId { get; init; }
+        public string? CurrentPaymentProvider { get; init; }
+        public string? CurrentPaymentQrCodeBase64 { get; init; }
+        public string? CurrentPaymentQrCode { get; init; }
+        public DateTime? CurrentPaymentExpiresAt { get; init; }
         public List<BagItemSummaryDto> Items { get; init; } = [];
         public List<BagItemSummaryDto> BagItems { get; init; } = [];
         public List<BagItemSummaryDto> OrderDetails { get; init; } = [];
@@ -1259,6 +1271,8 @@ internal sealed class AlieBrechoApiClient(
         public decimal? UnitPrice { get; init; }
         public decimal? Price { get; init; }
         public bool IsPaid { get; init; }
+        public bool IsReserved { get; init; }
+        public DateTime? ReservationExpiresAt { get; init; }
         public DateTime? PaidAt { get; init; }
         public ProductDto? Product { get; init; }
     }
@@ -1301,6 +1315,9 @@ internal sealed class AlieBrechoApiClient(
         public string? Status { get; init; }
         public string? StatusDetail { get; init; }
         public string? OrderStatus { get; init; }
+        public string? QrCodeBase64 { get; init; }
+        public string? QrCode { get; init; }
+        public DateTime? Expiracao { get; init; }
     }
 
     private sealed record OrderSummaryDto
@@ -1309,6 +1326,12 @@ internal sealed class AlieBrechoApiClient(
         public string? Status { get; init; }
         public decimal? TotalAmount { get; init; }
         public decimal? ShippingCost { get; init; }
+        public string? PaymentId { get; init; }
+        public string? PaymentStatus { get; init; }
+        public string? PaymentMethod { get; init; }
+        public string? PixQrCodeBase64 { get; init; }
+        public string? PixQrCode { get; init; }
+        public DateTime? PaymentExpiresAt { get; init; }
         public OrderPaymentSummaryDto? Payment { get; init; }
         public List<BagItemSummaryDto> OrderDetails { get; init; } = [];
         public List<BagItemSummaryDto> Items { get; init; } = [];
@@ -1317,6 +1340,11 @@ internal sealed class AlieBrechoApiClient(
     private sealed record OrderPaymentSummaryDto
     {
         public decimal? Amount { get; init; }
+        public string? Status { get; init; }
+        public string? ProviderTransactionId { get; init; }
+        public string? PixQrCodeBase64 { get; init; }
+        public string? PixQrCode { get; init; }
+        public DateTime? ExpiresAt { get; init; }
         public OrderPaymentDetailSummaryDto? PaymentDetail { get; init; }
     }
 

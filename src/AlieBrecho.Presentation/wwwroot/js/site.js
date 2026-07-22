@@ -273,7 +273,11 @@ function getStatusLabel(status) {
     entregue: "Entregue",
     cancelled: "Cancelado",
     canceled: "Cancelado",
-    cancelado: "Cancelado"
+    cancelado: "Cancelado",
+    expired: "Expirado",
+    expirado: "Expirado",
+    reservationexpired: "Expirado",
+    reservaexpirada: "Expirado"
   };
 
   return labels[normalized] || status || "Pagamento iniciado";
@@ -281,6 +285,9 @@ function getStatusLabel(status) {
 
 function getStatusClass(status) {
   const normalized = normalizeStatus(status);
+  if (isExpiredReservationStatus(status)) {
+    return "bag-order__status--expired";
+  }
   if (["cancelled", "canceled", "cancelado"].includes(normalized)) {
     return "bag-order__status--cancelled";
   }
@@ -326,19 +333,31 @@ async function getPurchases() {
     if (!response.ok) throw new Error("Nao foi possivel carregar os pedidos.");
 
     const orders = await response.json();
-    return orders.map((order) => ({
-      orderId: order.orderId,
-      purchaseType: order.purchaseType || "order",
-      status: order.status,
-      statusText: getStatusLabel(order.status),
-      generatedAt: order.createdAt || order.updatedAt,
-      totals: {
-        subtotal: formatCurrency(Math.max(0, Number(order.totalAmount || 0) - Number(order.shippingCost || 0))),
-        shipping: formatCurrency(Number(order.shippingCost || 0)),
-        total: formatCurrency(Number(order.amountPaid ?? order.totalAmount ?? 0))
-      },
-      items: mapPurchaseItems(order)
-    }));
+    const purchases = orders.map((order) => {
+      const purchase = {
+        orderId: order.orderId,
+        purchaseType: order.purchaseType || "order",
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentId: order.paymentId,
+        pixQrCode: order.pixQrCode,
+        pixCode: order.pixCode,
+        expiresAt: order.paymentExpiresAt,
+        statusText: getStatusLabel(order.status),
+        generatedAt: order.createdAt || order.updatedAt,
+        totals: {
+          subtotal: formatCurrency(Math.max(0, Number(order.totalAmount || 0) - Number(order.shippingCost || 0))),
+          shipping: formatCurrency(Number(order.shippingCost || 0)),
+          total: formatCurrency(Number(order.amountPaid ?? order.totalAmount ?? 0))
+        },
+        items: mapPurchaseItems(order)
+      };
+
+      persistOrderPayment(purchase);
+      return purchase;
+    });
+    await Promise.all(purchases.map(recoverOrderPayment));
+    return purchases;
   } catch {
     return getStoredPurchases();
   }
@@ -368,6 +387,88 @@ function isExpiredReservationStatus(status) {
 
   return ["reservationexpired", "reservaexpirada", "expired", "expirado"]
     .includes(normalized);
+}
+
+function isExpiredPayment(value) {
+  const status = value?.status || value;
+  if (isExpiredReservationStatus(status)) {
+    return true;
+  }
+
+  const normalized = normalizeStatus(status);
+  if (isPaidStatus(status) || ["cancelled", "canceled", "cancelado"].includes(normalized)) {
+    return false;
+  }
+
+  const expiresAt = value?.currentPaymentExpiresAt || value?.expiresAt;
+  return Boolean(expiresAt && new Date(expiresAt).getTime() <= Date.now());
+}
+
+function persistActiveBagPayment(activeBag) {
+  if (!activeBag?.id || !activeBag.currentPaymentId || isExpiredPayment(activeBag)) {
+    return null;
+  }
+
+  const data = {
+    pixQrCode: activeBag.currentPaymentQrCodeBase64 || "",
+    pixCode: activeBag.currentPaymentQrCode || "",
+    paymentId: activeBag.currentPaymentId,
+    expiresAt: activeBag.currentPaymentExpiresAt || ""
+  };
+  sessionStorage.setItem(`aliebrecho:pix:${activeBag.id}`, JSON.stringify(data));
+  return data;
+}
+
+function persistOrderPayment(order) {
+  if (!order?.orderId || order.purchaseType === "bag" || !order.paymentId || isExpiredPayment(order)) {
+    return null;
+  }
+
+  const data = {
+    pixQrCode: order.pixQrCode || "",
+    pixCode: order.pixCode || "",
+    paymentId: order.paymentId,
+    expiresAt: order.expiresAt || ""
+  };
+  sessionStorage.setItem(`aliebrecho:pix:${order.orderId}`, JSON.stringify(data));
+  return data;
+}
+
+async function recoverOrderPayment(order) {
+  if (!order?.orderId || order.purchaseType === "bag" || !order.paymentId || order.pixQrCode || order.pixCode) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `/Payment/Pix/${encodeURIComponent(order.orderId)}?handler=Status&paymentId=${encodeURIComponent(order.paymentId)}`,
+      { headers: { Accept: "application/json" }, cache: "no-store" }
+    );
+    if (!response.ok) return;
+
+    const payment = await response.json();
+    order.paymentStatus = payment.status || order.paymentStatus;
+    order.pixQrCode = payment.pixQrCode || "";
+    order.pixCode = payment.pixCode || "";
+    order.expiresAt = payment.expiresAt || order.expiresAt;
+    persistOrderPayment(order);
+  } catch {
+    // A listagem continua disponivel mesmo se o provedor estiver temporariamente indisponivel.
+  }
+}
+
+async function fetchActiveBagSummary() {
+  try {
+    const response = await fetch("/Cart?handler=Summary", {
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+    if (!response.ok) return null;
+    const cart = await response.json();
+    return cart?.activeBag || null;
+  } catch {
+    return null;
+  }
 }
 
 function getOrderStatus(order) {
@@ -595,9 +696,12 @@ function renderActiveBag(activeBag) {
 
   const activeBagItems = Array.isArray(activeBag?.items) ? activeBag.items : [];
   const activeBagItemCount = Number(activeBag?.itemCount || 0);
+  const expired = isExpiredPayment(activeBag);
+  const backendPix = persistActiveBagPayment(activeBag);
+  const hasPendingPayment = Boolean(backendPix?.pixQrCode || backendPix?.pixCode);
   const hasActiveBagItems = activeBagItemCount > 0 || activeBagItems.length > 0;
 
-  if (!activeBag?.id || !hasActiveBagItems || isExpiredReservationStatus(activeBag.status)) {
+  if (!activeBag?.id || (!hasActiveBagItems && !hasPendingPayment && !expired)) {
     currentActiveBagItemCount = 0;
     cartBagPanel.hidden = true;
     bagBody?.querySelector("[data-active-bag]")?.remove();
@@ -606,6 +710,7 @@ function renderActiveBag(activeBag) {
   }
 
   cartBagPanel.hidden = false;
+  cartBagPanel.classList.toggle("cart-bag-panel--expired", expired);
   currentActiveBagItemCount = activeBagItemCount || activeBagItems.reduce(
     (total, item) => total + (Number(item.quantity) || 1),
     0
@@ -618,10 +723,13 @@ function renderActiveBag(activeBag) {
     const activeBagBlock = document.createElement("div");
     activeBagBlock.className = "bag-order";
     activeBagBlock.dataset.activeBag = activeBag.id;
+    const statusValue = expired ? "expired" : activeBag.status;
+    const statusText = getStatusLabel(statusValue || "pending");
+    const statusClass = getStatusClass(statusValue);
     activeBagBlock.innerHTML = `
       <div class="bag-order__meta">
         <span>Sacolinha ${escapeHtml(activeBag.id)}</span>
-        <span class="bag-order__status">${escapeHtml(activeBag.status || "Em andamento")}</span>
+        <span class="bag-order__status ${statusClass}">${escapeHtml(statusText)}</span>
         <span>${currentActiveBagItemCount} ${currentActiveBagItemCount === 1 ? "peca" : "pecas"}</span>
       </div>
       ${activeBagItems.map((item) => {
@@ -645,6 +753,7 @@ function renderActiveBag(activeBag) {
       <div class="cart-item__info">
         <strong>Total: ${escapeHtml(activeBag.totalItemsValueText || "")}</strong>
         <span>Prazo: ${escapeHtml(activeBag.expirationDateText || "a confirmar")}</span>
+        ${hasPendingPayment && !expired ? `<a class="button" href="/Payment/Pix/${encodeURIComponent(activeBag.id)}">Continuar pagamento</a>` : ""}
       </div>
     `;
 
@@ -658,7 +767,12 @@ function renderActiveBag(activeBag) {
     cartBagCount.textContent = `${currentActiveBagItemCount} ${currentActiveBagItemCount === 1 ? "peca" : "pecas"}`;
   }
   if (cartBagDeadline) {
-    cartBagDeadline.textContent = `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;
+    cartBagDeadline.textContent = expired
+      ? "Reserva expirada"
+      : `Prazo: ${activeBag.expirationDateText || "a confirmar"}`;
+  }
+  if (finalizeBagBtn) {
+    finalizeBagBtn.hidden = expired;
   }
 }
 
@@ -694,6 +808,39 @@ async function renderPurchasesPage() {
   }
 
   let orders = await getPurchases();
+  const activeBag = await fetchActiveBagSummary();
+  if (activeBag?.id) {
+    persistActiveBagPayment(activeBag);
+    const activeStatus = isExpiredPayment(activeBag) ? "expired" : (activeBag.status || "pending");
+    const existing = orders.find((order) => String(order.orderId || "") === String(activeBag.id));
+    if (existing) {
+      existing.status = activeStatus;
+      existing.statusText = getStatusLabel(activeStatus);
+      existing.expiresAt = activeBag.currentPaymentExpiresAt || existing.expiresAt;
+    } else {
+      orders.unshift({
+        orderId: activeBag.id,
+        purchaseType: "bag",
+        deliveryType: "bag",
+        status: activeStatus,
+        statusText: getStatusLabel(activeStatus),
+        expiresAt: activeBag.currentPaymentExpiresAt,
+        generatedAt: activeBag.expirationDate,
+        totals: {
+          subtotal: activeBag.totalItemsValueText || "--",
+          shipping: activeBag.shippingCostText || "--",
+          total: activeBag.totalItemsValueText || "--"
+        },
+        items: (activeBag.items || []).map((item) => ({
+          name: item.name,
+          image: item.imageUrl,
+          quantity: item.quantity,
+          price: item.unitPriceText,
+          variant: "Tamanho unico"
+        }))
+      });
+    }
+  }
   await removeDeletedBagPurchases(orders);
   list.innerHTML = "";
   if (!orders.length) {
@@ -704,12 +851,14 @@ async function renderPurchasesPage() {
   if (empty) empty.hidden = true;
   orders.forEach((order) => {
     const orderId = String(order.orderId || "");
-    const statusValue = getOrderStatus(order);
+    const statusValue = isExpiredPayment(order) ? "expired" : getOrderStatus(order);
     const paid = isPaidStatus(statusValue);
-    const statusText = order.statusText || getStatusLabel(statusValue);
+    const statusText = isExpiredPayment(order) ? "Expirado" : (order.statusText || getStatusLabel(statusValue));
     const statusClass = getStatusClass(statusValue);
     const pixData = orderId ? readSessionJson(`aliebrecho:pix:${orderId}`) : null;
-    const canResumePayment = !paid && isPendingStatus(statusValue) && Boolean(pixData?.pixQrCode || pixData?.pixCode);
+    const canResumePayment = !paid &&
+      isPendingStatus(statusValue) &&
+      Boolean(pixData?.paymentId || pixData?.pixQrCode || pixData?.pixCode || order.paymentId);
     const items = Array.isArray(order.items) ? order.items : [];
     const purchaseDateValue = order.finalizedAt || order.paidAt || order.generatedAt;
     const purchaseDate = purchaseDateValue
@@ -1774,7 +1923,7 @@ function initCheckoutDynamics() {
 
 initCheckoutDynamics();
 
-function initPixPaymentPage() {
+async function initPixPaymentPage() {
   const shell = document.querySelector(".pix-payment-shell");
   if (!shell) {
     return;
@@ -1786,7 +1935,7 @@ function initPixPaymentPage() {
   const copyPreview = document.getElementById("pixCopyPreview");
   const qrImage = document.getElementById("pixQrImage");
   const qrText = document.getElementById("pixQrText");
-  const raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
+  let raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
   const snapshot = orderId ? readPurchaseJson(`aliebrecho:order-confirm:${orderId}`) : null;
   const isBagPayment = snapshot?.deliveryType === "bag" || snapshot?.delivery?.mode === "Sacolinha";
   let pollTimer = null;
@@ -1884,14 +2033,45 @@ function initPixPaymentPage() {
 
   renderSnapshot();
 
+  if (!raw && orderId) {
+    const activeBag = await fetchActiveBagSummary();
+    if (String(activeBag?.id || "") === String(orderId)) {
+      const restored = persistActiveBagPayment(activeBag);
+      raw = restored ? JSON.stringify(restored) : null;
+      if (!raw && isExpiredPayment(activeBag)) {
+        if (help) {
+          help.textContent = "Este pagamento Pix expirou. Gere um novo pagamento para continuar.";
+          help.classList.add("pix-payment-help--expired");
+        }
+        return;
+      }
+    }
+
+    if (!raw) {
+      const order = (await getPurchases()).find((purchase) =>
+        purchase.purchaseType !== "bag" && String(purchase.orderId || "") === String(orderId));
+      raw = orderId ? sessionStorage.getItem(`aliebrecho:pix:${orderId}`) : null;
+      if (!raw && order && isExpiredPayment(order)) {
+        if (help) {
+          help.textContent = "Este pagamento Pix expirou. Gere um novo pagamento para continuar.";
+          help.classList.add("pix-payment-help--expired");
+        }
+        return;
+      }
+    }
+  }
+
   if (!raw) {
     if (help) {
-      help.textContent = "Nao encontramos os dados Pix desta sessao. Volte ao checkout para gerar o pagamento novamente.";
+      help.textContent = "Nao encontramos um pagamento Pix pendente. Volte ao checkout para gerar um novo pagamento.";
     }
     return;
   }
 
   const data = JSON.parse(raw);
+  if (data.expiresAt) {
+    setText("pixExpiresAt", formatDateTime(data.expiresAt));
+  }
   const pixCode = data.pixCode || data.pixQrCode || "";
   if (copyCode) {
     copyCode.value = pixCode;
@@ -1949,6 +2129,39 @@ function initPixPaymentPage() {
         }
         window.location.href = `/obrigado?pedido=${encodeURIComponent(orderId)}`;
         return;
+      }
+
+      if (statusData.expiresAt && new Date(statusData.expiresAt).getTime() <= Date.now()) {
+        stopPolling();
+        sessionStorage.removeItem(`aliebrecho:pix:${orderId}`);
+        if (help) {
+          help.textContent = "Este pagamento Pix expirou. Gere um novo pagamento para continuar.";
+          help.classList.add("pix-payment-help--expired");
+        }
+        return;
+      }
+
+      if (statusData.pixQrCode || statusData.pixCode) {
+        data.pixQrCode = statusData.pixQrCode || data.pixQrCode || "";
+        data.pixCode = statusData.pixCode || data.pixCode || "";
+        data.expiresAt = statusData.expiresAt || data.expiresAt || "";
+        sessionStorage.setItem(`aliebrecho:pix:${orderId}`, JSON.stringify(data));
+
+        const refreshedPixCode = data.pixCode || data.pixQrCode || "";
+        if (copyCode) copyCode.value = refreshedPixCode;
+        if (copyPreview) {
+          copyPreview.textContent = truncateMiddle(refreshedPixCode);
+          copyPreview.title = refreshedPixCode;
+        }
+        if (data.pixQrCode && /^(data:image\/|https?:\/\/)/i.test(data.pixQrCode) && qrImage) {
+          qrImage.src = data.pixQrCode;
+          qrImage.hidden = false;
+          if (qrText) qrText.hidden = true;
+        } else if (data.pixQrCode && qrText) {
+          qrText.textContent = data.pixQrCode;
+          qrText.hidden = false;
+        }
+        if (data.expiresAt) setText("pixExpiresAt", formatDateTime(data.expiresAt));
       }
 
       if (help) {

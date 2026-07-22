@@ -28,6 +28,11 @@ public class IndexModel(IBagGateway bagGateway, IOrderGateway orderGateway) : Pa
             totalAmount = order.TotalAmount,
             shippingCost = order.ShippingCost,
             amountPaid = order.AmountPaid,
+            paymentId = order.PaymentId,
+            paymentStatus = order.PaymentStatus,
+            pixQrCode = order.PixQrCode,
+            pixCode = order.PixCode,
+            paymentExpiresAt = order.PaymentExpiresAt,
             paidAt = (DateTime?)null,
             items = order.Items
         }).Concat(bags.Select(bag => new
@@ -38,6 +43,11 @@ public class IndexModel(IBagGateway bagGateway, IOrderGateway orderGateway) : Pa
             totalAmount = (decimal?)(bag.TotalItemsValue + (bag.ShippingCost ?? 0m)),
             shippingCost = bag.ShippingCost,
             amountPaid = (decimal?)bag.TotalItemsValue,
+            paymentId = bag.CurrentPaymentId,
+            paymentStatus = (string?)null,
+            pixQrCode = bag.CurrentPaymentQrCodeBase64,
+            pixCode = bag.CurrentPaymentQrCode,
+            paymentExpiresAt = bag.CurrentPaymentExpiresAt,
             paidAt = bag.PaidAt,
             items = bag.Items
         })).OrderByDescending(x => x.paidAt).ToArray();
