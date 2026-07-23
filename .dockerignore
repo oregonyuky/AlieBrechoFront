@@ -1,0 +1,14 @@
+.git
+.github
+.agents
+.vs
+.vscode
+**/bin
+**/obj
+artifacts
+.tmp-projetoHtmlJs
+*.log
+*.user
+*.suo
+appsettings.Local.json
+src/AlieBrecho.Presentation/App_Data

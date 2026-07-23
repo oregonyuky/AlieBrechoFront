@@ -13,6 +13,11 @@ using AppAuthenticationService = AlieBrecho.Application.Auth.AuthenticationServi
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var railwayPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{railwayPort}");
+}
+
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
@@ -101,6 +106,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }))
+    .AllowAnonymous();
 app.MapGet("/api/instagram/latest", async (
     InstagramFeedService instagramFeedService,
     CancellationToken cancellationToken) =>
