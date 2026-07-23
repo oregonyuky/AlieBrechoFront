@@ -138,6 +138,14 @@ public class LoginModel(
             claims.Add(new Claim(AuthSessionKeys.RefreshToken, session.RefreshToken));
         }
 
+        if (string.Equals(session.AuthenticationProvider, "Google", StringComparison.Ordinal) &&
+            Uri.TryCreate(session.PictureUrl, UriKind.Absolute, out var pictureUri) &&
+            pictureUri.Scheme == Uri.UriSchemeHttps)
+        {
+            claims.Add(new Claim(AuthSessionKeys.AuthenticationProvider, "Google"));
+            claims.Add(new Claim(AuthSessionKeys.PictureUrl, pictureUri.ToString()));
+        }
+
         claims.AddRange(session.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

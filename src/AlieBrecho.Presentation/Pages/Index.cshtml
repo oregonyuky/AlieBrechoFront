@@ -148,10 +148,10 @@
                         <h3 class="product-card__name">@product.Name</h3>
                         <p class="product-card__desc">@product.ShortDescription</p>
                         <div class="product-card__pricing">
-                            <span class="price-current">@product.DisplayPrice.ToString("C")</span>
+                            <span class="price-current">R$ @product.DisplayPrice.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                             @if (product.OldPrice is not null)
                             {
-                                <span class="price-old">@product.OldPrice.Value.ToString("C")</span>
+                                <span class="price-old">R$ @product.OldPrice.Value.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"))</span>
                             }
                         </div>
                         @if (product.Sizes.Count > 0)

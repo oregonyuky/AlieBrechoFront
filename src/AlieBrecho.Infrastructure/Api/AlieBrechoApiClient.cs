@@ -99,6 +99,8 @@ internal sealed class AlieBrechoApiClient(
             Email = login.Data.Email ?? string.Empty,
             FirstName = login.Data.FirstName,
             LastName = login.Data.LastName,
+            PictureUrl = login.Data.PictureUrl,
+            AuthenticationProvider = "Google",
             Roles = login.Data.Roles ?? ["Customer"]
         };
     }
@@ -1175,6 +1177,7 @@ internal sealed class AlieBrechoApiClient(
         public string? Email { get; init; }
         public string? FirstName { get; init; }
         public string? LastName { get; init; }
+        public string? PictureUrl { get; init; }
         public List<string>? Roles { get; init; }
     }
 

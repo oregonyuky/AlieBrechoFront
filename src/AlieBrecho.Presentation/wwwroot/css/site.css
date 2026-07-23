@@ -322,6 +322,10 @@ main {
   width: 32px;
 }
 
+.account-avatar[hidden] {
+  display: none;
+}
+
 .account-menu__dropdown {
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(196, 120, 106, 0.14);
@@ -4463,6 +4467,88 @@ textarea {
 }
 
 @media (max-width: 640px) {
+  .checkout-shell {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: 100px 12px 48px;
+    width: 100%;
+  }
+
+  .checkout-layout,
+  .checkout-left,
+  .checkout-right,
+  .checkout-form,
+  .checkout-step-card,
+  .checkout-step-body,
+  .checkout-form-grid,
+  .field {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .checkout-layout {
+    border-radius: 14px;
+  }
+
+  .checkout-left,
+  .checkout-right {
+    padding: 22px 14px;
+  }
+
+  .checkout-brand {
+    margin-bottom: 22px;
+  }
+
+  .checkout-title {
+    font-size: 42px;
+    margin-bottom: 22px;
+  }
+
+  .checkout-step-header {
+    gap: 8px;
+    padding: 15px 14px;
+  }
+
+  .checkout-step-header__left {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .checkout-step-header__left > div:last-child {
+    min-width: 0;
+  }
+
+  .checkout-step-summary {
+    overflow-wrap: anywhere;
+  }
+
+  .checkout-step-body {
+    padding: 0 14px 16px;
+  }
+
+  .checkout-step-body input,
+  .checkout-step-body textarea,
+  .checkout-step-body select {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cep-row,
+  .cupom-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .btn-cep,
+  .btn-cupom {
+    width: 100%;
+  }
+
   .contact-shell,
   .faq-shell {
     padding: 96px 18px 56px;
@@ -4539,7 +4625,22 @@ textarea {
   }
 
   .price-current {
+    display: block;
+    font-size: clamp(15px, 4.4vw, 18px);
+    letter-spacing: -0.2px;
     white-space: nowrap;
+  }
+
+  .price-old {
+    display: block;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .product-card__pricing {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .stats-row,
@@ -4795,6 +4896,11 @@ textarea {
   display: flex;
   gap: 0.75rem;
   margin: 1.25rem 0;
+}
+
+.account-avatar--google {
+  border: 0;
+  object-fit: cover;
 }
 
 .google-auth-separator::before,

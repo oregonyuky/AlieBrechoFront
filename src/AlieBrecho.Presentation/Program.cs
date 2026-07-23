@@ -15,6 +15,7 @@ using AppAuthenticationService = AlieBrecho.Application.Auth.AuthenticationServi
 LoadEnvironmentVariables();
 
 var builder = WebApplication.CreateBuilder(args);
+ConfigureGoogleClientIdAliases(builder);
 
 if (int.TryParse(Environment.GetEnvironmentVariable("PORT"), out var railwayPort))
 {
@@ -178,5 +179,14 @@ static void LoadEnvironmentVariables()
         {
             Env.Load(path);
         }
+    }
+}
+
+static void ConfigureGoogleClientIdAliases(WebApplicationBuilder builder)
+{
+    var customerGoogleClientId = Environment.GetEnvironmentVariable("CUSTOMER_CLIENT_ID");
+    if (!string.IsNullOrWhiteSpace(customerGoogleClientId))
+    {
+        builder.Configuration["Google:Customer:ClientId"] = customerGoogleClientId.Trim();
     }
 }

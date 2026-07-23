@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Antiforgery
 @using System.Security.Claims
 @using AlieBrecho.Infrastructure.Api
+@using AlieBrecho.Domain.Auth
 @using Microsoft.Extensions.Options
 @inject IAntiforgery Antiforgery
 @inject IOptions<AlieBrechoApiOptions> ApiOptions
@@ -137,6 +138,10 @@
     @{
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var displayName = User.Identity?.Name ?? User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
+        var authenticationProvider = User.FindFirst(AuthSessionKeys.AuthenticationProvider)?.Value;
+        var googlePictureUrl = string.Equals(authenticationProvider, "Google", StringComparison.Ordinal)
+            ? User.FindFirst(AuthSessionKeys.PictureUrl)?.Value
+            : null;
         var nameParts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var initials = nameParts.Length switch
         {
@@ -174,7 +179,19 @@
                     <button class="account-menu__trigger" id="accountMenuToggle" type="button" aria-label="Abrir menu da conta" aria-haspopup="true" aria-expanded="false">
                         @if (isAuthenticated)
                         {
-                            <span class="account-avatar">@initials</span>
+                            @if (!string.IsNullOrWhiteSpace(googlePictureUrl))
+                            {
+                                <img class="account-avatar account-avatar--google"
+                                     src="@googlePictureUrl"
+                                     alt="Foto da conta Google de @displayName"
+                                     referrerpolicy="no-referrer"
+                                     onerror="this.hidden=true;this.nextElementSibling.hidden=false;" />
+                                <span class="account-avatar" hidden>@initials</span>
+                            }
+                            else
+                            {
+                                <span class="account-avatar">@initials</span>
+                            }
                         }
                         else
                         {
