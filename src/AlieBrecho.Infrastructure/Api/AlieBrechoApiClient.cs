@@ -73,6 +73,36 @@ internal sealed class AlieBrechoApiClient(
         };
     }
 
+    public async Task<LoginSession?> LoginWithGoogleAsync(
+        GoogleLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            _options.GoogleCustomerLoginPath,
+            new GoogleLoginPayload { Credential = request.Credential },
+            JsonOptions,
+            cancellationToken);
+
+        await EnsureSuccessAsync(response, cancellationToken);
+
+        var login = await ReadWrappedAsync<LoginDto>(response, cancellationToken);
+        if (string.IsNullOrWhiteSpace(login.Data?.AccessToken))
+        {
+            return null;
+        }
+
+        return new LoginSession
+        {
+            AccessToken = login.Data.AccessToken,
+            RefreshToken = login.Data.RefreshToken,
+            UserId = login.Data.UserId,
+            Email = login.Data.Email ?? string.Empty,
+            FirstName = login.Data.FirstName,
+            LastName = login.Data.LastName,
+            Roles = login.Data.Roles ?? ["Customer"]
+        };
+    }
+
     public async Task<RegisterResult?> RegisterAsync(
         RegisterRequest request,
         CancellationToken cancellationToken)
@@ -1130,6 +1160,11 @@ internal sealed class AlieBrechoApiClient(
     {
         public string? Email { get; init; }
         public string? Password { get; init; }
+    }
+
+    private sealed record GoogleLoginPayload
+    {
+        public string? Credential { get; init; }
     }
 
     private sealed record LoginDto

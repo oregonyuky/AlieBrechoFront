@@ -15,6 +15,18 @@ public sealed class AuthenticationService(IAuthenticationGateway gateway)
         return await gateway.LoginAsync(request, cancellationToken);
     }
 
+    public async Task<LoginSession?> LoginWithGoogleAsync(
+        GoogleLoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Credential))
+        {
+            return null;
+        }
+
+        return await gateway.LoginWithGoogleAsync(request, cancellationToken);
+    }
+
     public async Task<LoginSession?> RegisterAndLoginAsync(
         RegisterRequest request,
         CancellationToken cancellationToken)

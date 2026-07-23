@@ -24,6 +24,7 @@ public sealed class AlieBrechoApiOptions
     public string MercadoPagoPixPaymentPath { get; init; } = "api/pix/criar-pagamento";
     public string MercadoPagoPixStatusPathTemplate { get; init; } = "api/pix/status/{paymentId}";
     public string LoginPath { get; init; } = "api/Security/Login";
+    public string GoogleCustomerLoginPath { get; init; } = "api/auth/customer/google";
     public string RegisterPath { get; init; } = "api/Security/Register";
     public string DropConfigActivePath { get; init; } = "api/drop-config/active";
     public string ContactMessagesPath { get; init; } = "api/contact-messages";

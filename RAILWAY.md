@@ -10,6 +10,7 @@ O projeto usa o `Dockerfile` da raiz e lê a porta fornecida pelo Railway automa
 
 ```text
 AlieBrechoApi__BaseUrl=http://${{api.RAILWAY_PRIVATE_DOMAIN}}:${{api.PORT}}/
+Google__Customer__ClientId=<oauth-client-id-da-loja>.apps.googleusercontent.com
 ```
 
 O serviço backend precisa ter uma variável `PORT` explícita (por exemplo, `8080`) para que a referência `${{api.PORT}}` seja resolvida. Defina `PORT=8080` também no front para manter a configuração previsível.

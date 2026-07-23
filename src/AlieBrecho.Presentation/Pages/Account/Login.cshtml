@@ -42,12 +42,53 @@
             <button class="button" type="submit">Entrar</button>
         </form>
 
-        <p class="auth-switch">Ainda nao tem conta? <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">Criar cadastro</a></p>
+        <div class="google-auth-separator" aria-hidden="true"><span>ou</span></div>
+        @if (!string.IsNullOrWhiteSpace(Model.GoogleCustomerClientId))
+        {
+            <div id="googleCustomerButton" class="google-auth-button"></div>
+            <form method="post" asp-page-handler="Google" id="googleCustomerForm">
+                <input type="hidden" asp-for="ReturnUrl" />
+                <input type="hidden" asp-for="GoogleCredential" id="googleCredential" />
+            </form>
+        }
+        else
+        {
+            <button class="google-auth-unconfigured" type="button" disabled>
+                <span class="google-auth-logo" aria-hidden="true">G</span>
+                Continuar com Google
+            </button>
+            <p class="google-auth-warning">
+                Login Google indisponível: configure <code>Google__Customer__ClientId</code>.
+            </p>
+        }
+
+        <p class="auth-switch">Não possui uma conta? <a asp-page="/Account/Register" asp-route-returnUrl="@Model.ReturnUrl">Cadastre-se</a></p>
     </div>
 </section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    @if (!string.IsNullOrWhiteSpace(Model.GoogleCustomerClientId))
+    {
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script>
+            window.addEventListener("load", function () {
+                if (!window.google?.accounts?.id) return;
+
+                google.accounts.id.initialize({
+                    client_id: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.GoogleCustomerClientId)),
+                    callback: function (response) {
+                        document.getElementById("googleCredential").value = response.credential;
+                        document.getElementById("googleCustomerForm").submit();
+                    }
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById("googleCustomerButton"),
+                    { theme: "outline", size: "large", text: "continue_with", width: 320 }
+                );
+            });
+        </script>
+    }
     @if (!string.IsNullOrWhiteSpace(Model.RedirectUrl))
     {
         <script>

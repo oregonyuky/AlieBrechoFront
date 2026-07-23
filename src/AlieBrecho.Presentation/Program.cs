@@ -9,7 +9,10 @@ using AlieBrecho.Presentation.Instagram;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using DotNetEnv;
 using AppAuthenticationService = AlieBrecho.Application.Auth.AuthenticationService;
+
+LoadEnvironmentVariables();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -158,3 +161,22 @@ app.MapRazorPages()
    .WithStaticAssets();
 
 app.Run();
+
+static void LoadEnvironmentVariables()
+{
+    var candidates = new[]
+    {
+        Path.Combine(Directory.GetCurrentDirectory(), ".env"),
+        Path.Combine(Directory.GetCurrentDirectory(), "src", "AlieBrecho.Presentation", ".env"),
+        Path.Combine(AppContext.BaseDirectory, ".env"),
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".env"))
+    };
+
+    foreach (var path in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        if (File.Exists(path))
+        {
+            Env.Load(path);
+        }
+    }
+}

@@ -1,7 +1,9 @@
 @page
 @model AlieBrecho.Presentation.Pages.Account.RegisterModel
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "Cadastro";
+    var googleCustomerClientId = Configuration["Google:Customer:ClientId"];
 }
 
 <section class="auth-shell auth-shell-wide">
@@ -61,6 +63,29 @@
             <button class="button full" type="submit">Cadastrar cliente</button>
         </form>
 
+        <div class="google-auth-separator" aria-hidden="true"><span>ou</span></div>
+        @if (!string.IsNullOrWhiteSpace(googleCustomerClientId))
+        {
+            <div id="googleCustomerRegisterButton" class="google-auth-button"></div>
+            <form method="post"
+                  asp-page="/Account/Login"
+                  asp-page-handler="Google"
+                  id="googleCustomerRegisterForm">
+                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+                <input type="hidden" name="GoogleCredential" id="googleRegisterCredential" />
+            </form>
+        }
+        else
+        {
+            <button class="google-auth-unconfigured" type="button" disabled>
+                <span class="google-auth-logo" aria-hidden="true">G</span>
+                Continuar com Google
+            </button>
+            <p class="google-auth-warning">
+                Cadastro Google indisponível: configure <code>Google__Customer__ClientId</code>.
+            </p>
+        }
+
         <a class="button button-secondary auth-existing-account"
            asp-page="/Account/Login"
            asp-route-returnUrl="@Model.ReturnUrl">Entrar em uma conta existente</a>
@@ -75,4 +100,25 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    @if (!string.IsNullOrWhiteSpace(googleCustomerClientId))
+    {
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script>
+            window.addEventListener("load", function () {
+                if (!window.google?.accounts?.id) return;
+
+                google.accounts.id.initialize({
+                    client_id: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(googleCustomerClientId)),
+                    callback: function (response) {
+                        document.getElementById("googleRegisterCredential").value = response.credential;
+                        document.getElementById("googleCustomerRegisterForm").submit();
+                    }
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById("googleCustomerRegisterButton"),
+                    { theme: "outline", size: "large", text: "signup_with", width: 320 }
+                );
+            });
+        </script>
+    }
 }

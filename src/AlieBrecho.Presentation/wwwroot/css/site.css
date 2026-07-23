@@ -4789,3 +4789,54 @@ textarea {
     flex-direction: column;
   }
 }
+.google-auth-separator {
+  align-items: center;
+  color: var(--muted, #6b7280);
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.google-auth-separator::before,
+.google-auth-separator::after {
+  background: currentColor;
+  content: "";
+  flex: 1;
+  height: 1px;
+  opacity: 0.3;
+}
+
+.google-auth-button {
+  display: flex;
+  justify-content: center;
+}
+
+.google-auth-unconfigured {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  color: #3c4043;
+  display: flex;
+  font: 500 14px Arial, sans-serif;
+  gap: 12px;
+  justify-content: center;
+  margin: 0 auto;
+  min-height: 40px;
+  opacity: 0.7;
+  width: min(320px, 100%);
+}
+
+.google-auth-logo {
+  color: #4285f4;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.google-auth-warning {
+  color: #8a5a00;
+  font-size: 0.78rem;
+  margin: 0.5rem auto 0;
+  max-width: 320px;
+  text-align: center;
+}

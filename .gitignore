@@ -9,3 +9,4 @@ obj/
 run.*.log
 appsettings.Local.json
 src/AlieBrecho.Presentation/App_Data/
+*.env

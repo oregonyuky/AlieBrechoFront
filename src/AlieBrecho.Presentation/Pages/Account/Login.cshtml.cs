@@ -12,7 +12,9 @@ using AppAuthenticationService = AlieBrecho.Application.Auth.AuthenticationServi
 namespace AlieBrecho.Presentation.Pages.Account;
 
 [AllowAnonymous]
-public class LoginModel(AppAuthenticationService authenticationService) : PageModel
+public class LoginModel(
+    AppAuthenticationService authenticationService,
+    IConfiguration configuration) : PageModel
 {
     [BindProperty]
     public LoginInput Input { get; set; } = new();
@@ -22,6 +24,11 @@ public class LoginModel(AppAuthenticationService authenticationService) : PageMo
 
     public string? ErrorMessage { get; private set; }
     public string? RedirectUrl { get; private set; }
+    public string GoogleCustomerClientId =>
+        configuration["Google:Customer:ClientId"] ?? string.Empty;
+
+    [BindProperty]
+    public string? GoogleCredential { get; set; }
 
     [TempData]
     public string? StatusMessage { get; set; }
@@ -54,10 +61,7 @@ public class LoginModel(AppAuthenticationService authenticationService) : PageMo
 
             // A new authenticated session must never inherit a cart or auth data
             // left in the browser's existing ASP.NET session.
-            HttpContext.Session.Remove(SessionCartStore.SessionKey);
-            HttpContext.Session.Remove(AuthSessionKeys.AccessToken);
-            HttpContext.Session.Remove(AuthSessionKeys.RefreshToken);
-            HttpContext.Session.Remove(AuthSessionKeys.UserId);
+            ClearExistingSession();
 
             await SignInAsync(session);
             SaveApiTokens(session);
@@ -72,6 +76,51 @@ public class LoginModel(AppAuthenticationService authenticationService) : PageMo
                 : ex.Message;
             return Page();
         }
+    }
+
+    public async Task<IActionResult> OnPostGoogleAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(GoogleCredential))
+        {
+            ErrorMessage = "O Google não retornou uma credencial válida.";
+            return Page();
+        }
+
+        try
+        {
+            var session = await authenticationService.LoginWithGoogleAsync(
+                new GoogleLoginRequest { Credential = GoogleCredential },
+                cancellationToken);
+
+            if (session is null)
+            {
+                ErrorMessage = "Não foi possível autenticar com o Google.";
+                return Page();
+            }
+
+            Input.RememberMe = true;
+            ClearExistingSession();
+            await SignInAsync(session);
+            SaveApiTokens(session);
+
+            RedirectUrl = GetSafeReturnUrl();
+            return Page();
+        }
+        catch (HttpRequestException ex)
+        {
+            ErrorMessage = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Não foi possível autenticar com o Google."
+                : ex.Message;
+            return Page();
+        }
+    }
+
+    private void ClearExistingSession()
+    {
+        HttpContext.Session.Remove(SessionCartStore.SessionKey);
+        HttpContext.Session.Remove(AuthSessionKeys.AccessToken);
+        HttpContext.Session.Remove(AuthSessionKeys.RefreshToken);
+        HttpContext.Session.Remove(AuthSessionKeys.UserId);
     }
 
     private async Task SignInAsync(LoginSession session)
