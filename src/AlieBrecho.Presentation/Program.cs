@@ -10,9 +10,11 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using DotNetEnv;
+using System.Globalization;
 using AppAuthenticationService = AlieBrecho.Application.Auth.AuthenticationService;
 
 LoadEnvironmentVariables();
+ConfigureBrazilianCulture();
 
 var builder = WebApplication.CreateBuilder(args);
 ConfigureGoogleClientIdAliases(builder);
@@ -180,6 +182,13 @@ static void LoadEnvironmentVariables()
             Env.Load(path);
         }
     }
+}
+
+static void ConfigureBrazilianCulture()
+{
+    var brazilianCulture = CultureInfo.GetCultureInfo("pt-BR");
+    CultureInfo.DefaultThreadCurrentCulture = brazilianCulture;
+    CultureInfo.DefaultThreadCurrentUICulture = brazilianCulture;
 }
 
 static void ConfigureGoogleClientIdAliases(WebApplicationBuilder builder)
